@@ -1,4 +1,4 @@
-from src.app.globals.response import ApiResponse
+from app.globals.response import ApiResponse
 from fastapi import (
     UploadFile,
     File,
@@ -11,7 +11,7 @@ from fastapi import (
     Path as pth,
 )
 from sqlalchemy import desc
-from src.app.globals.generic_responses import validation_response
+from app.globals.generic_responses import validation_response
 from .modelsIn import ClaimIn
 from .services import (
     detect_language,
@@ -25,18 +25,18 @@ from .services import (
 )
 from pathlib import Path
 import os
-from src.app.gcp.gcs import storage_client
-from src.app.db.models.claims import Claim
-from src.app.resourcesController import claim_controller, namespace_controller
-from src.app.globals.authentication import CurrentUserIdentifier
-from src.app.globals.notification import send_push_notification
-from src.app.globals.schema_models import role_categ_assoc
-from src.app.db.orm import get_db
-from src.app.db.models import Users, Stay
+from app.gcp.gcs import storage_client
+from app.db.models.claims import Claim
+from app.resourcesController import claim_controller, namespace_controller
+from app.globals.authentication import CurrentUserIdentifier
+from app.globals.notification import send_push_notification
+from app.globals.schema_models import role_categ_assoc
+from app.db.orm import get_db
+from app.db.models import Users, Stay
 from sqlalchemy import desc, and_, or_, any_
 from dotmap import DotMap
 from datetime import datetime
-from src.app.routers.claims.modelsOut import ClaimGI, ClaimDetails, ClaimDetailsResponse
+from app.routers.claims.modelsOut import ClaimGI, ClaimDetails, ClaimDetailsResponse
 from mutagen.mp3 import MP3
 
 router = APIRouter(prefix="/claims", tags=["Claims"], responses={**validation_response})

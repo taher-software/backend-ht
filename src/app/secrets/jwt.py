@@ -1,12 +1,12 @@
 import jwt
-from src.settings import settings
+from settings import settings
 from time import time
 from datetime import datetime
 import jwt
-from src.settings import settings
-from src.app.globals.exceptions import ApiException
+from settings import settings
+from app.globals.exceptions import ApiException
 from fastapi import status
-from src.app.globals.error import invalid_token, expired_token
+from app.globals.error import invalid_token, expired_token
 from time import time
 
 

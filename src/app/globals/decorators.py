@@ -1,5 +1,5 @@
 from functools import wraps
-from src.app.db.orm import get_db
+from app.db.orm import get_db
 
 
 def transactional(func):

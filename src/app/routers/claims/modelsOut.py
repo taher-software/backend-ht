@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Dict
-from src.app.globals.response import ApiResponse
+from app.globals.response import ApiResponse
 
 
 class ClaimGI(BaseModel):

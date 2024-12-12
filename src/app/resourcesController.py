@@ -1,5 +1,5 @@
-from src.app.db.controller import dbController
-from src.app.db.models import Namespace, Users, Guest, Claim
+from app.db.controller import dbController
+from app.db.models import Namespace, Users, Guest, Claim
 
 users_controller = dbController(Users)
 namespace_controller = dbController(Namespace)

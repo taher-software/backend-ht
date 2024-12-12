@@ -1,11 +1,11 @@
 from pydantic import BaseModel
-from src.app.globals.response import ApiResponse
-from src.app.globals.status import Status
+from app.globals.response import ApiResponse
+from app.globals.status import Status
 from typing import Any
 from fastapi import status
-from src.app.globals.status import Status
-from src.app.globals.error import Error
-from src.app.globals.schema_models import GuestModel
+from app.globals.status import Status
+from app.globals.error import Error
+from app.globals.schema_models import GuestModel
 from pydantic import Field
 
 

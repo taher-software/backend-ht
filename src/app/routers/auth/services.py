@@ -1,6 +1,6 @@
 from twilio.rest import Client
 import random
-from src.app.globals.notification import send_push_notification
+from app.globals.notification import send_push_notification
 
 # Replace these with your Twilio credentials
 TWILIO_ACCOUNT_SID = "your_account_sid"

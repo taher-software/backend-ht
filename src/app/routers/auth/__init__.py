@@ -1,23 +1,23 @@
 from fastapi import APIRouter, Depends, UploadFile, File, status, Header, Query, Body
-from src.app.secrets.passwords import hash_password
-from src.app.db.orm import get_db
+from app.secrets.passwords import hash_password
+from app.db.orm import get_db
 from .modelsIn import NamespaceRegistry
-from src.app.resourcesController import (
+from app.resourcesController import (
     users_controller,
     namespace_controller,
     guest_controller,
 )
-from src.app.globals.emails import send_email
+from app.globals.emails import send_email
 from dotmap import DotMap
-from src.settings import settings
-from src.app.secrets.jwt import sign_jwt
-from src.app.globals.schema_models import UsersModel, NamespaceModel, GuestModel
-from src.app.db.models import Namespace
+from settings import settings
+from app.secrets.jwt import sign_jwt
+from app.globals.schema_models import UsersModel, NamespaceModel, GuestModel
+from app.db.models import Namespace
 from sqlalchemy import and_, or_
-from src.app.globals.exceptions import ApiException
-from src.app.globals.error import Error
-from src.app.globals.response import ApiResponse
-from src.app.routers.auth.modelsOut import (
+from app.globals.exceptions import ApiException
+from app.globals.error import Error
+from app.globals.response import ApiResponse
+from app.routers.auth.modelsOut import (
     MessageResponse,
     no_domain_error,
     no_domain_response,
@@ -33,19 +33,19 @@ from src.app.routers.auth.modelsOut import (
     MeResponse,
     StayModel,
 )
-from src.app.globals.generic_responses import validation_response
-from src.app.globals.authentication import domain_auth, CurrentUserIdentifier
-from src.app.globals.generic_responses import (
+from app.globals.generic_responses import validation_response
+from app.globals.authentication import domain_auth, CurrentUserIdentifier
+from app.globals.generic_responses import (
     invalid_token_response,
     expired_token_response,
     not_authenticated_response,
     db_error_response,
 )
 from pydantic import EmailStr
-from src.app.routers.auth.services import send_otp, generate_otp
-from src.app.globals.error import dbError
-from src.app.secrets.jwt import sign_jwt
-from src.app.db.models import Stay, Claim
+from app.routers.auth.services import send_otp, generate_otp
+from app.globals.error import dbError
+from app.secrets.jwt import sign_jwt
+from app.db.models import Stay, Claim
 from sqlalchemy import desc
 from datetime import datetime
 

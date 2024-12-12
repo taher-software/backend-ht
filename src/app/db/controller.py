@@ -1,6 +1,6 @@
 from abc import ABC
-from src.app.db.orm import get_db
-from src.app.globals.decorators import transactional
+from app.db.orm import get_db
+from app.globals.decorators import transactional
 
 
 class DbControllerInterface(ABC):

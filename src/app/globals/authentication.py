@@ -1,12 +1,12 @@
-from src.app.globals.response import ApiResponse
-from src.app.globals.exceptions import ApiException
-from src.app.db.orm import get_db
+from app.globals.response import ApiResponse
+from app.globals.exceptions import ApiException
+from app.db.orm import get_db
 from fastapi import Depends, Request, status
-from src.app.globals.error import not_authenticated, invalid_token
-from src.app.secrets.jwt import decode_jwt
-from src.app.resourcesController import users_controller, namespace_controller
-from src.app.globals.schema_models import Role
-from src.app.routers.auth.modelsOut import no_domain_error
+from app.globals.error import not_authenticated, invalid_token
+from app.secrets.jwt import decode_jwt
+from app.resourcesController import users_controller, namespace_controller
+from app.globals.schema_models import Role
+from app.routers.auth.modelsOut import no_domain_error
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 

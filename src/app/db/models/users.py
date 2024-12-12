@@ -1,8 +1,8 @@
-from src.app.db.orm import Base
+from app.db.orm import Base
 from sqlalchemy import Column, String, Integer, DateTime, PickleType, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from src.app.db.orm import get_utc_time
+from app.db.orm import get_utc_time
 import pytz
 
 

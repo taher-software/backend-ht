@@ -1,5 +1,5 @@
 import uvicorn
-from .config import start_app
+from config import start_app
 
 # import google.cloud.logging
 
