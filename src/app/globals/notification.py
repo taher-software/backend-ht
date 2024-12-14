@@ -15,7 +15,8 @@ def send_push_notification(expo_push_token, title, message):
         "title": title,
         "body": message,
     }
-
+    print(f"expo_push_token: {expo_push_token}")
+    logging.info(f"expo_push_token: {expo_push_token}")
     response = requests.post(url, json=payload, headers=headers)
     if response.status_code == 200:
         print("Notification sent successfully")
