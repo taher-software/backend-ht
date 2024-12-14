@@ -211,6 +211,9 @@ def me(
     sejour["fullname"] = f"{current_guest['first_name']} {current_guest['last_name']}"
 
     sejour["avatar"] = current_guest["avatar_url"]
+    if not current_stay:
+        stay_model = StayModel(**sejour)
+        return MeResponse(data=stay_model)
     if today >= current_stay.start_date and today <= current_stay.end_date:
 
         sejour["stay"] = True
