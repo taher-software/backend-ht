@@ -168,7 +168,7 @@ def mobile_login(
     phone_number: str = Body(..., pattern="^\+?[1-9]\d{1,14}$"),
     push_token: str | None = Body(None),
 ) -> ApiResponse:
-
+    print(f"push_token_mobile_login: {push_token}")
     app_user = guest_controller.find_by_id(phone_number)
     if not app_user:
         app_user = users_controller.find_by_field("phone_number", phone_number)
