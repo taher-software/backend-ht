@@ -15,7 +15,7 @@ class Users(Base):
     user_email = Column(String(255), index=True)
     first_name = Column(String(255), index=True)
     last_name = Column(String(255), index=True)
-    current_device_token = Column(DateTime, nullable=True)
+    current_device_token = Column(String(255), nullable=True)
     hashed_password = Column(String(255), index=True, nullable=True)
     role = Column(PickleType, index=True, nullable=False)
     created_at = Column(

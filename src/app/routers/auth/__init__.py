@@ -175,7 +175,10 @@ def mobile_login(
 
         if not app_user:
             raise ApiException(status.HTTP_404_NOT_FOUND, no_user_error)
-        users_controller.update(app_user["id"], dict(current_device_token=push_token))
+        if push_token:
+            users_controller.update(
+                app_user["id"], dict(current_device_token=push_token)
+            )
 
         return GuestLoginResponse(data=GuestLogin(token=sign_jwt(app_user)))
     if push_token:
