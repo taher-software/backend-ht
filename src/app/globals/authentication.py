@@ -9,7 +9,7 @@ from app.globals.schema_models import Role
 from app.routers.auth.modelsOut import no_domain_error
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Literal
-from resourcesController import users_controller, claim_controller, guest_controller
+from app.resourcesController import users_controller, claim_controller, guest_controller
 
 
 class domain_auth:
