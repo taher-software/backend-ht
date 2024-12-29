@@ -49,7 +49,7 @@ def create_claim(
     img_files: list[UploadFile] = File(None),
     vid_file: UploadFile = File(None),
     voice_file: UploadFile = File(None),
-    current_guest: dict = Depends(CurrentUserIdentifier()),
+    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
     db=Depends(get_db),
 ) -> ApiResponse:
 
@@ -166,7 +166,8 @@ def create_claim(
 
 @router.get("/guest_claims")
 def guest_current_stay_claims(
-    current_guest: dict = Depends(CurrentUserIdentifier()), db=Depends(get_db)
+    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
+    db=Depends(get_db),
 ) -> ApiResponse:
 
     current_stay = (
@@ -205,7 +206,7 @@ def guest_current_stay_claims(
 @router.get("/claim_detail/{id}")
 def get_claim_details(
     id: int = pth(...),
-    current_guest: dict = Depends(CurrentUserIdentifier()),
+    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
     db=Depends(get_db),
 ) -> ClaimDetails:
 

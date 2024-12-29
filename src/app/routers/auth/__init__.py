@@ -191,15 +191,16 @@ def mobile_login(
 
 
 @router.get("/get_otp", response_model=OtpResponse)
-def get_otp(current_guest: dict = Depends(CurrentUserIdentifier())):
-    push_token = current_guest["current_device_token"]
+def get_otp(current_user: dict = Depends(CurrentUserIdentifier(who="any"))):
+    push_token = current_user["current_device_token"]
     otp = send_otp(push_token)
     return OtpResponse(data=OtpModel(otp=otp))
 
 
 @router.get("/me", response_model=MeResponse)
 def me(
-    current_guest: dict = Depends(CurrentUserIdentifier()), db=Depends(get_db)
+    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
+    db=Depends(get_db),
 ) -> ApiResponse:
 
     current_stay = (

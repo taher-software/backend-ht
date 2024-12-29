@@ -2,13 +2,14 @@ from app.globals.response import ApiResponse
 from app.globals.exceptions import ApiException
 from app.db.orm import get_db
 from fastapi import Depends, Request, status
-from app.globals.error import not_authenticated, invalid_token
+from app.globals.error import not_authenticated, invalid_token, Error
 from app.secrets.jwt import decode_jwt
 from app.resourcesController import users_controller, namespace_controller
 from app.globals.schema_models import Role
 from app.routers.auth.modelsOut import no_domain_error
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional
+from typing import Optional, Literal
+from resourcesController import users_controller, claim_controller, guest_controller
 
 
 class domain_auth:
@@ -37,9 +38,16 @@ class domain_auth:
 
 
 class CurrentUserIdentifier(HTTPBearer):
-    def __init__(self, db=Depends(get_db)):
+    def __init__(
+        self,
+        db=Depends(get_db),
+        who: Literal["user", "guest", "any"] = None,
+        raise_error=True,
+    ):
         super().__init__()
         self.db = db
+        self.who = who
+        self.raise_error = raise_error
 
     async def __call__(self, request: Request) -> dict:
         try:
@@ -53,6 +61,46 @@ class CurrentUserIdentifier(HTTPBearer):
 
         if credentials and credentials.scheme == "Bearer":
             decoded_data = decode_jwt(credentials.credentials)
+            if self.who == "user":
+                if "id" in decoded_data:
+                    user = users_controller.find_by_id(decoded_data["id"])
+                    if not user:
+                        if self.raise_error:
+                            raise ApiException(
+                                status.HTTP_401_UNAUTHORIZED,
+                                Error("auth", "Employee Not Found"),
+                            )
+                        return None
+                elif self.raise_error:
+                    raise ApiException(status.HTTP_401_UNAUTHORIZED, invalid_token)
+
+            if self.who == "guest":
+                if "phone_number" in decoded_data:
+                    guest = guest_controller.find_by_field(
+                        "phone_number", decoded_data["phone_number"]
+                    )
+                    if not guest:
+                        if self.raise_error:
+                            raise ApiException(
+                                status.HTTP_401_UNAUTHORIZED,
+                                Error("auth", "Guest Not Found"),
+                            )
+                        return None
+                elif self.raise_error:
+                    raise ApiException(status.HTTP_401_UNAUTHORIZED, invalid_token)
+
+            if self.who == "any":
+                current_user = None
+                if "id" in decoded_data:
+                    current_user = users_controller.find_by_id(decoded_data["id"])
+                if "phone_number" in decoded_data:
+                    current_user = guest_controller.find_by_field(
+                        "phone_number", decoded_data["phone_number"]
+                    )
+                if not current_user:
+                    if self.raise_error:
+                        raise ApiException(status.HTTP_401_UNAUTHORIZED, invalid_token)
+                    return None
 
             return decoded_data
         raise exception
