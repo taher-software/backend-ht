@@ -14,7 +14,12 @@ def create_stay(
     payload: StayRegistry,
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
-    guest_fields = ["guest_phone_number", "first_name", "last_name", "birth_date"]
+    guest_fields = {
+        "guest_phone_number": "phone_number",
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "birth_date": "birth_date",
+    }
     stay_fields = ["start_date", "end_date", "meal_plan", "stay_room"]
     guest = guest_controller.find_by_field("phone_number", payload.guest_phone_number)
     if not guest:
@@ -22,7 +27,7 @@ def create_stay(
         for field in guest_fields:
             field_value = getattr(payload, field)
             if field_value:
-                guest_payload[field] = field_value
+                guest_payload[guest_fields[field]] = field_value
         guest_controller.create(guest_payload)
 
     stay_payload = dict(
