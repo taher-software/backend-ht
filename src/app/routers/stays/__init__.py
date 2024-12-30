@@ -12,7 +12,7 @@ router = APIRouter(prefix="/stays", tags=["Stays"], responses={**validation_resp
 @router.post("/create")
 def create_stay(
     payload: StayRegistry,
-    current_user: dict = Depends(CurrentUserIdentifier(who="guest")),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
     guest_fields = ["guest_phone_number", "first_name", "last_name", "birth_date"]
     stay_fields = ["start_date", "end_date", "meal_plan", "stay_room"]
