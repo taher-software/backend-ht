@@ -38,7 +38,7 @@ def create_stay(
         if field_value:
             if field == "meal_plan":
                 field_value = field_value.value
-                stay_payload[field] = field_value
+            stay_payload[field] = field_value
     stay_controller.create(stay_payload)
 
     return ApiResponse(data="New stay saved successfully")
