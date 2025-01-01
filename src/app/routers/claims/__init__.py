@@ -93,7 +93,7 @@ def create_claim(
         os.remove(destination_file)
         claim_dict.update(dict(claim_video_url=vid_url))
     if voice_file:
-
+        print("voice file received")
         destination_file = os.path.join(destination_path, voice_file.filename)
         with open(destination_file, "wb") as f:
             f.write(voice_file.file.read())
@@ -116,7 +116,8 @@ def create_claim(
                 claim_voice_duration=payload.voice_duration,
             )
         )
-
+    else:
+        print("no voice file received...")
     claim_title = create_claim_title(claim_text, claim_language)
     claim_dict.update(dict(claim_title=claim_title))
 
