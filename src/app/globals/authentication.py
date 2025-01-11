@@ -91,17 +91,14 @@ class CurrentUserIdentifier(HTTPBearer):
 
             if self.who == "any":
                 current_user = None
-                print(f"decoded_data: {decoded_data}")
                 if "id" in decoded_data:
-                    print("here...")
+
                     current_user = users_controller.find_by_id(decoded_data["id"])
-                    print(f"current_user: {current_user}")
-                if "phone_number" in decoded_data:
+                elif "phone_number" in decoded_data:
                     current_user = guest_controller.find_by_field(
                         "phone_number", decoded_data["phone_number"]
                     )
-                print(f"final current user: {current_user}")
-                if not current_user:
+                if current_user is None:
                     if self.raise_error:
                         raise ApiException(status.HTTP_401_UNAUTHORIZED, invalid_token)
                     return None
