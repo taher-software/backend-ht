@@ -91,6 +91,7 @@ class CurrentUserIdentifier(HTTPBearer):
 
             if self.who == "any":
                 current_user = None
+                print(f"decoded_data: {decoded_data}")
                 if "id" in decoded_data:
                     current_user = users_controller.find_by_id(decoded_data["id"])
                 if "phone_number" in decoded_data:
