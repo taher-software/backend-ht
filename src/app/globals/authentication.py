@@ -100,6 +100,7 @@ class CurrentUserIdentifier(HTTPBearer):
                     current_user = guest_controller.find_by_field(
                         "phone_number", decoded_data["phone_number"]
                     )
+                print(f"final current user: {current_user}")
                 if not current_user:
                     if self.raise_error:
                         raise ApiException(status.HTTP_401_UNAUTHORIZED, invalid_token)
