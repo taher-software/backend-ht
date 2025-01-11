@@ -93,7 +93,9 @@ class CurrentUserIdentifier(HTTPBearer):
                 current_user = None
                 print(f"decoded_data: {decoded_data}")
                 if "id" in decoded_data:
+                    print("here...")
                     current_user = users_controller.find_by_id(decoded_data["id"])
+                    print(f"current_user: {current_user}")
                 if "phone_number" in decoded_data:
                     current_user = guest_controller.find_by_field(
                         "phone_number", decoded_data["phone_number"]
