@@ -84,7 +84,7 @@ def create_claim(
     if vid_file:
         destination_file = os.path.join(destination_path, vid_file.filename)
         with open(destination_file, "wb") as f:
-            f.write(img.file.read())
+            f.write(vid_file.file.read())
         vid_url = storage_client.upload_to_bucket(
             "book-management-api-58a60.appspot.com",
             destination_file,
