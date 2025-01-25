@@ -44,7 +44,7 @@ destination_path = Path(__file__).parent
 
 
 @router.post("/create")
-def create_claim(
+async def create_claim(
     payload: ClaimIn | None = None,
     img_files: list[UploadFile] = File(None),
     vid_file: UploadFile = File(None),
@@ -72,7 +72,7 @@ def create_claim(
         for img in img_files:
             destination_file = os.path.join(destination_path, img.filename)
             with open(destination_file, "wb") as f:
-                f.write(img.file.read())
+                f.write(await img.file.read())
             img_url = storage_client.upload_to_bucket(
                 "book-management-api-58a60.appspot.com",
                 destination_file,
@@ -84,7 +84,7 @@ def create_claim(
     if vid_file:
         destination_file = os.path.join(destination_path, vid_file.filename)
         with open(destination_file, "wb") as f:
-            f.write(vid_file.file.read())
+            f.write(await vid_file.file.read())
         vid_url = storage_client.upload_to_bucket(
             "book-management-api-58a60.appspot.com",
             destination_file,
