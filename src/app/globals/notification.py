@@ -3,7 +3,7 @@ import logging
 
 
 def send_push_notification(expo_push_token, title, message):
-    url = "https://exp.host/--/api/v2/push/send"
+    url = "https://api.expo.dev/v2/push/send?useFcmV1=true"
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
