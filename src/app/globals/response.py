@@ -9,7 +9,7 @@ import json
 # ================================ Success Api Response =======================================
 class ApiResponse(BaseModel):
     status: Status = Status.success
-    data: list | BaseModel | dict | str | None = None
+    data: list | dict | BaseModel | str | None = None
     error: Error | None = None
 
     def __init__(self, *args, **kwargs):

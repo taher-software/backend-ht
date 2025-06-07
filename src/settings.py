@@ -2,6 +2,7 @@ from pydantic import EmailStr, HttpUrl, Field
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 import os
+from openai import OpenAI
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,10 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(env="jwt_secret", default="taher")
     openia_apikey: str = Field(
         env="openia_apikey",
-        default="",
+    )
+    celery_broker: str = Field(env="celery_broker", default="redis://localhost:6379/0")
+    celery_backend: str = Field(
+        env="celery_backend", default="redis://localhost:6379/0"
     )
 
 
@@ -30,4 +34,5 @@ def get_settings():
 
 
 settings = get_settings()
-os.environ["OPENAI_API_KEY"] = settings.openia_apikey
+# os.environ["OPENAI_API_KEY"] = settings.openia_apikey
+client = OpenAI(api_key=settings.openia_apikey)

@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from app.globals.enum import MealPlan
+from src.app.globals.enum import MealPlan
 
 
 class StayRegistry(BaseModel):
@@ -8,7 +8,21 @@ class StayRegistry(BaseModel):
     first_name: str = Field(...)
     last_name: str = Field(...)
     birth_date: str | None = Field(None)
-    start_date: datetime = Field(...)
-    end_date: datetime = Field(...)
+    start_date: str = Field(...)
+    end_date: str = Field(...)
     meal_plan: MealPlan = Field(...)
     stay_room: str = Field(...)
+
+    @field_validator("start_date", "end_date", mode="after")
+    @classmethod
+    def parse_stay_dates(cls, value: str) -> str:
+        if value:
+            return datetime.strptime(value, "%Y-%m-%d")
+        return value
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def parse_birth_date(cls, value: str) -> str:
+        if value:
+            return datetime.strptime(value, "%Y/%m/%d")
+        return value

@@ -1,6 +1,6 @@
 from abc import ABC
-from app.db.orm import get_db
-from app.globals.decorators import transactional
+from src.app.db.orm import get_db
+from src.app.globals.decorators import transactional
 
 
 class DbControllerInterface(ABC):
@@ -54,25 +54,28 @@ class dbController(DbControllerInterface):
         payload = result.to_dict()
         return payload
 
-    def get_all(self, limit: int | None = None):
+    def get_all(self, limit: int | None = None, namespace_id: int | None = None):
+        data = self.db.query(self.resource).filter(
+            self.resource.namespace_id == namespace_id
+        )
         if limit:
-            data = self.db.query(self.resource).limit(limit).all()
-        else:
-            data = self.db.query(self.resource).all()
-
+            data = data.limit(limit)
+        data = data.all()
         result = []
         for elt in data:
             result.append(elt.to_dict())
         return result
 
-    @transactional
-    def create(self, metadata: dict, db):
+    def create(self, metadata: dict, db, commit: bool = True, **kwargs):
         resource = self.resource(**metadata)
         db.add(resource)
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         return metadata
 
-    @transactional
-    def update(self, resource_id, metadata, resource_key="id", **kwargs):
+    def update(self, resource_id, metadata, resource_key="id", commit=True, **kwargs):
         db = kwargs["db"]
         row_data = db.query(self.resource).get(resource_id).to_dict()
         row_data.update(metadata)
@@ -80,9 +83,10 @@ class dbController(DbControllerInterface):
         db.query(self.resource).filter(
             getattr(self.resource, resource_key) == resource_id
         ).update(metadata)
+        db.commit() if commit else db.flush()
         return row_data
 
-    @transactional
     def delete(self, resource_id, **kwargs):
         db = kwargs["db"]
         db.query(self.resource).filter(self.resource.id == resource_id).delete()
+        return True

@@ -1,6 +1,8 @@
 from twilio.rest import Client
 import random
-from app.globals.notification import send_push_notification
+from src.app.globals.notification import send_push_notification
+from geopy.geocoders import Nominatim
+from timezonefinder import TimezoneFinder
 
 # Replace these with your Twilio credentials
 TWILIO_ACCOUNT_SID = "your_account_sid"
@@ -22,3 +24,13 @@ def send_otp(push_token: str):
     send_push_notification(push_token, notif_title, message)
     print(f"opt: {otp}")
     return otp
+
+
+def detect_time_zone(city: str, country: str) -> str:
+    geolocator = Nominatim(user_agent="tz_finder")
+    location = geolocator.geocode(f"{city}, {country}")
+    if location:
+        tf = TimezoneFinder()
+        timezone = tf.timezone_at(lng=location.longitude, lat=location.latitude)
+        return timezone
+    return "Timezone not found"

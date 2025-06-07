@@ -1,16 +1,16 @@
-from app.db.orm import Base
+from src.app.db.orm import Base
 from sqlalchemy import Column, ForeignKey, DateTime, String, Integer
 from datetime import datetime
-from app.db.orm import get_utc_time
+from src.app.db.orm import get_utc_time
 
 
 class Stay(Base):
     __tablename__ = "stay"
     id = Column(Integer, primary_key=True, index=True)
-    namespace_id = Column(ForeignKey("namespace.id"))
+    namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"), index=True)
     start_date = Column(DateTime, nullable=False, index=True)
     end_date = Column(DateTime, nullable=False, index=True)
-    guest_id = Column(ForeignKey("guest.phone_number"))
+    guest_id = Column(ForeignKey("guest.phone_number", ondelete="CASCADE"), index=True)
     meal_plan = Column(String(255))
     stay_room = Column(String(255), nullable=False)
     created_at = Column(

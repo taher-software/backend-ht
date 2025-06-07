@@ -1,5 +1,5 @@
 from functools import wraps
-from app.db.orm import get_db
+from src.app.db.orm import get_db
 
 
 def transactional(func):
@@ -10,7 +10,6 @@ def transactional(func):
         try:
             result = func(*args, **kwargs, db=db)
             db.commit()
-            db.flush()
             return result
         except Exception as e:
             print("---------problem occured---------")

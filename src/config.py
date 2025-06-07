@@ -1,15 +1,15 @@
 from fastapi import FastAPI, status, Request
 from starlette.middleware.cors import CORSMiddleware
-from app.db.orm import Base, engine
-from app.db import models
-from app.routers import add_routers
+from src.app.db.orm import Base, engine
+from src.app.db import models
+from src.app.routers import add_routers
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
-from app.globals.exceptions import ApiException
-from app.globals.error import Error
+from src.app.globals.exceptions import ApiException
+from src.app.globals.error import Error
 from fastapi.responses import JSONResponse
 from starlette.concurrency import iterate_in_threadpool
-from app.globals.response import ApiResponse
+from src.app.globals.response import ApiResponse
 
 
 def create_tables():

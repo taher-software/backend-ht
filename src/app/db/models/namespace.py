@@ -1,8 +1,8 @@
-from app.db.orm import Base
+from src.app.db.orm import Base
 from sqlalchemy import Column, String, Integer, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.db.orm import get_utc_time
+from src.app.db.orm import get_utc_time
 
 
 class Namespace(Base):
@@ -15,12 +15,15 @@ class Namespace(Base):
     hotel_star_rating = Column(Integer, index=True, nullable=True)
     business_registration_number = Column(String(255), index=True)
     tax_identification_number = Column(String(255), index=True)
-    country = Column(String(255), index=True)
+    country = Column(String(255), index=True, nullable=False)
     province = Column(String(255), index=True, nullable=True)
     postal_code = Column(String(255), index=True)
-    city = Column(String(255), index=True, nullable=True)
+    city = Column(String(255), index=True, nullable=False)
     number_of_rooms = Column(Integer, index=True, nullable=True)
     confirmed_account = Column(Boolean, index=True, nullable=False, default=False)
+    pref_language = Column(String(255), nullable=True)
+    timezone = Column(String(50), nullable=False)
+
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )
@@ -32,6 +35,21 @@ class Namespace(Base):
     )
 
     users = relationship("Users", back_populates="namespace")
+    settings = relationship(
+        "NamespaceSettings", back_populates="namespace", uselist=False
+    )
+    daily_room_surveys = relationship(
+        "DailyRoomSatisfactionSurvey", back_populates="namespace"
+    )
+    room_reception_surveys = relationship(
+        "RoomReceptionSurvey", back_populates="namespace"
+    )
+    dishes = relationship("Dishes", back_populates="namespace")
+    queue_root_causes = relationship("QueueRootCause", back_populates="namespace")
+    daily_restaurant_surveys = relationship(
+        "DailyRestaurantSurvey", back_populates="namespace"
+    )
+    dishes_surveys = relationship("DishesSurvey", back_populates="namespace")
 
     def to_dict(self):
         return {

@@ -1,9 +1,10 @@
-from app.db.orm import Base
+from src.app.db.orm import Base
 from sqlalchemy import Column, String, Integer, DateTime, PickleType, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.db.orm import get_utc_time
-import pytz
+from src.app.db.orm import get_utc_time
+from src.app.globals.schema_models import Role
+from sqlalchemy import Enum
 
 
 class Users(Base):
@@ -17,10 +18,11 @@ class Users(Base):
     last_name = Column(String(255), index=True)
     current_device_token = Column(String(255), nullable=True)
     hashed_password = Column(String(255), index=True, nullable=True)
-    role = Column(PickleType, index=True, nullable=False)
+    role = Column(String(255), index=True, nullable=False)
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )
+    pref_language = Column(String(255), nullable=True)
     updated_at = Column(
         DateTime(timezone=False),
         index=True,
@@ -29,6 +31,16 @@ class Users(Base):
         onupdate=get_utc_time,
     )
     namespace = relationship("Namespace", back_populates="users")
+    received_claims = relationship(
+        "Claim",
+        back_populates="receiver",
+        foreign_keys="[Claim.acknowledged_employee_id]",
+    )
+    resolved_claims = relationship(
+        "Claim",
+        back_populates="resolver",
+        foreign_keys="[Claim.resolver_employee_id]",
+    )
 
     def to_dict(self):
         return {

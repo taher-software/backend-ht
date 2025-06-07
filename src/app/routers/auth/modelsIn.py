@@ -14,7 +14,7 @@ class NamespaceRegistry(BaseModel):
     country: str = Field(...)
     province: str = Field(None)
     postal_code: str = Field(...)
-    city: str | None = None
+    city: str = Field(...)
     number_of_rooms: int | None = None
     first_name: str = Field(...)
     last_name: str = Field(...)

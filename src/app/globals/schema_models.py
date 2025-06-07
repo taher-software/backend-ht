@@ -14,12 +14,30 @@ class Role(str, Enum):
     guest_relations_supervisor: str = "guest relations supervisor"
 
 
+class ClaimStatus(str, Enum):
+    pending: str = "pending"
+    processing: str = "processing"
+    resolved: str = "resolved"
+    closed: str = "closed"
+    rejected: str = "rejected"
+
+
+class ClaimCategory(str, Enum):
+    Housekeeping: str = "Housekeeping"
+    Maintenance: str = "Maintenance"
+    Guest_Relations: str = "Guest Relations"
+    Dining: str = "Dining"
+    Unknown: str = "unknown"
+
+
 role_categ_assoc = {
-    "Housekeeping": "housekeeping supervisor",
-    "Maintenance": "maintenance supervisor",
-    "Guest Relations": "guest relations supervisor",
-    "Dining": "dining supervisor",
-    "unknown": "supervisor",
+    Role.housekeeping_supervisor.value: [ClaimCategory.Housekeeping.value],
+    Role.maintenance_supervisor.value: [ClaimCategory.Maintenance.value],
+    Role.guest_relations_supervisor.value: [ClaimCategory.Guest_Relations.value],
+    Role.dining_supervisor.value: [ClaimCategory.Dining.value],
+    Role.supervisor.value: list(ClaimCategory.__members__.values()),
+    Role.owner.value: list(ClaimCategory.__members__.values()),
+    Role.admin.value: list(ClaimCategory.__members__.values()),
 }
 
 

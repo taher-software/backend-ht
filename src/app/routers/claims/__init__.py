@@ -1,4 +1,4 @@
-from app.globals.response import ApiResponse
+from src.app.globals.response import ApiResponse
 from fastapi import (
     UploadFile,
     File,
@@ -11,7 +11,7 @@ from fastapi import (
     Path as pth,
 )
 from sqlalchemy import desc
-from app.globals.generic_responses import validation_response
+from src.app.globals.generic_responses import validation_response
 from .modelsIn import ClaimIn
 from .services import (
     detect_language,
@@ -22,25 +22,31 @@ from .services import (
     create_body_notif,
     create_title_notif,
     create_claim_title,
+    add_guest_claims,
 )
 from pathlib import Path
 import os
-from app.gcp.gcs import storage_client
-from app.db.models.claims import Claim
-from app.resourcesController import claim_controller, namespace_controller
-from app.globals.authentication import CurrentUserIdentifier
-from app.globals.notification import send_push_notification
-from app.globals.schema_models import role_categ_assoc
-from app.db.orm import get_db
-from app.db.models import Users, Stay
+from src.app.gcp.gcs import storage_client
+from src.app.db.models.claims import Claim
+from src.app.resourcesController import claim_controller, namespace_controller
+from src.app.globals.authentication import CurrentUserIdentifier
+from src.app.globals.notification import send_push_notification
+from src.app.globals.schema_models import role_categ_assoc
+from src.app.db.orm import get_db
+from src.app.db.models import Users, Stay
 from sqlalchemy import desc, and_, or_, any_
 from dotmap import DotMap
 from datetime import datetime
-from app.routers.claims.modelsOut import ClaimGI, ClaimDetails, ClaimDetailsResponse
+from src.app.routers.claims.modelsOut import ClaimGI, ClaimDetails, ClaimDetailsResponse
 from mutagen.mp3 import MP3
+from fastapi import Query
+from typing import Literal
+from src.app.globals.schema_models import ClaimStatus
+from sqlalchemy import func
+from src.app.globals.decorators import transactional
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/claims", tags=["Claims"], responses={**validation_response})
-destination_path = Path(__file__).parent
 
 
 @router.post("/create")
@@ -50,120 +56,12 @@ def create_claim(
     vid_file: UploadFile = File(None),
     voice_file: UploadFile = File(None),
     current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
-    db=Depends(get_db),
 ) -> ApiResponse:
 
-    guest = DotMap(current_guest)
-    claim_dict = dict(guest_id=guest.phone_number)
-
-    if payload and payload.text:
-        claim_text = payload.text
-        claim_language = detect_language(claim_text)
-        claim_category = define_category(claim_text)
-        claim_dict.update(
-            dict(
-                claim_text=claim_text,
-                claim_language=claim_language,
-                claim_category=claim_category,
-            )
-        )
-    if img_files:
-        img_urls = []
-        for img in img_files:
-            print(f"img_file: {img.filename}")
-            destination_file = os.path.join(destination_path, img.filename)
-            with open(destination_file, "wb") as f:
-                f.write(img.file.read())
-            img_url = storage_client.upload_to_bucket(
-                "book-management-api-58a60.appspot.com",
-                destination_file,
-                f"image_claim_files/{img.filename}",
-            )
-            img_urls.append(img_url)
-            os.remove(destination_file)
-        claim_dict.update(dict(claim_images_url=img_urls))
-    if vid_file:
-        destination_file = os.path.join(destination_path, vid_file.filename)
-        print(f"vid_file: {vid_file.filename}")
-        with open(destination_file, "wb") as f:
-            f.write(vid_file.file.read())
-        vid_url = storage_client.upload_to_bucket(
-            "book-management-api-58a60.appspot.com",
-            destination_file,
-            f"video_claim_files/{vid_file.filename}",
-        )
-        os.remove(destination_file)
-        claim_dict.update(dict(claim_video_url=vid_url))
-    if voice_file:
-        print("voice file received")
-        destination_file = os.path.join(destination_path, voice_file.filename)
-        with open(destination_file, "wb") as f:
-            f.write(voice_file.file.read())
-
-        claim_text = transcript_audio(destination_file)
-        claim_language = detect_language(claim_text)
-        claim_category = define_category(claim_text)
-        voice_url = storage_client.upload_to_bucket(
-            "book-management-api-58a60.appspot.com",
-            destination_file,
-            f"voice_claim_files/{voice_file.filename}",
-        )
-
-        os.remove(destination_file)
-        claim_dict.update(
-            dict(
-                claim_voice_url=voice_url,
-                claim_category=claim_category,
-                claim_language=claim_language,
-                claim_voice_duration=payload.voice_duration,
-            )
-        )
-    else:
-        print("no voice file received...")
-    claim_title = create_claim_title(claim_text, claim_language)
-    claim_dict.update(dict(claim_title=claim_title))
-
-    stay = (
-        db.query(Stay)
-        .filter(Stay.guest_id == guest.phone_number)
-        .order_by(desc(Stay.start_date))
-        .first()
+    notif_body = add_guest_claims(
+        payload, current_guest, img_files, voice_file, vid_file
     )
-
-    claim_dict.update(dict(namespace_id=stay.namespace_id))
-    claim_dict.update(dict(stay_id=stay.id))
-
-    claim_controller.create(claim_dict)
-
-    role = role_categ_assoc[claim_category]
-
-    employees = (
-        db.query(Users)
-        .filter(
-            and_(
-                Users.namespace_id == stay.namespace_id,
-                or_(
-                    Users.role.contains(role),
-                    Users.role.contains("supervisor"),
-                ),
-            )
-        )
-        .all()
-    )
-    namespace = namespace_controller.find_by_id(stay.namespace_id)
-    namespace = DotMap(namespace)
-    country = namespace.country
-    namespace_language = country_mother_language(country)
-    print(f"namespace language: {namespace_language}")
-    notif_title = create_title_notif(namespace_language)
-    print(f"notif title: {notif_title}")
-    notif_body = create_body_notif(claim_text, namespace_language, stay.stay_room)
-    print(f"notif title: {notif_body}")
-
-    # review the case with unknown type
-    for emp in employees:
-
-        send_push_notification(emp.current_device_token, notif_title, notif_body)
+    print(f"notif body: {notif_body}")
     return ApiResponse(data=notif_body)
 
 
@@ -171,6 +69,8 @@ def create_claim(
 def guest_current_stay_claims(
     current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
     db=Depends(get_db),
+    page: int = Query(...),
+    limit: int = Query(...),
 ) -> ApiResponse:
 
     current_stay = (
@@ -195,10 +95,17 @@ def guest_current_stay_claims(
                 )
             )
             .order_by(desc(Claim.created_at))
+            .offset(page * limit)
+            .limit(limit)
             .all()
         )
 
-        return ApiResponse(data=[ClaimGI(**claim.to_dict()) for claim in claims])
+        return ApiResponse(
+            data={
+                "claims": [ClaimGI(**claim.to_dict()) for claim in claims],
+                "total": len(claims),
+            }
+        )
     else:
         raise HTTPException(
             status.HTTP_417_EXPECTATION_FAILED,
@@ -209,15 +116,140 @@ def guest_current_stay_claims(
 @router.get("/claim_detail/{id}")
 def get_claim_details(
     id: int = pth(...),
-    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
+    current_guest: dict = Depends(CurrentUserIdentifier(who="any")),
     db=Depends(get_db),
 ) -> ClaimDetails:
 
-    claim = claim_controller.find_by_id(id)
-    if claim["guest_id"] != current_guest["phone_number"]:
-        raise HTTPException(
-            status.HTTP_406_NOT_ACCEPTABLE,
-            f"The requested claim with id {id} doesn't belong to the current user ",
-        )
+    claim = (
+        db.query(Claim)
+        .options(selectinload(Claim.receiver))
+        .options(selectinload(Claim.resolver))
+        .get(id)
+    )
 
-    return ClaimDetails(**claim)
+    if "id" not in current_guest:
+
+        if claim.guest_id != current_guest["phone_number"]:
+            raise HTTPException(
+                status.HTTP_406_NOT_ACCEPTABLE,
+                f"The requested claim with id {id} doesn't belong to the current user ",
+            )
+    else:
+        if claim.claim_category not in role_categ_assoc.get(current_guest["role"], []):
+            raise HTTPException(
+                status.HTTP_406_NOT_ACCEPTABLE,
+                f"The requested claim with id {id} doesn't belong to the current user scope ",
+            )
+
+    return ClaimDetails.model_validate(claim)
+
+
+@router.get("/claims_status_listing")
+def get_claims_status_listing(
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    status: ClaimStatus = Query(...),
+    page: int = Query(...),
+    limit: int = Query(...),
+    db=Depends(get_db),
+) -> ApiResponse:
+
+    today = datetime.now().date()
+    query = (
+        db.query(Claim)
+        .filter(
+            and_(
+                Claim.status == status.value,
+                Claim.namespace_id == current_user["namespace_id"],
+                func.date(Claim.created_at) == today,
+            )
+        )
+        .order_by(desc(Claim.created_at))
+    )
+
+    total = query.count()
+    claims = query.offset(page * limit).limit(limit).all()
+
+    return ApiResponse(
+        data={
+            "claims": [ClaimGI(**claim.to_dict()) for claim in claims],
+            "total": total,
+        }
+    )
+
+
+@router.patch("/{action}/{id}")
+def update_claim(
+    action: Literal["approve", "reject", "acknowledge", "resolve"],
+    id: int,
+    current_user: dict = Depends(CurrentUserIdentifier(who="any")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    action_map_assoc = {
+        "approve": ClaimStatus.closed.value,
+        "reject": ClaimStatus.rejected.value,
+        "acknowledge": ClaimStatus.processing.value,
+        "resolve": ClaimStatus.resolved.value,
+    }
+    payload = {"status": action_map_assoc[action]}
+    claim = claim_controller.find_by_id(id)
+    if not claim:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Claim with id {id} not found",
+        )
+    if action in ["acknowledge", "resolve"]:
+
+        if "id" not in current_user:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only authenticated users can acknowledge or resolve claims",
+            )
+        # Get allowed categories for user's role
+        allowed_categories = role_categ_assoc.get(current_user["role"], [])
+        if claim["claim_category"] not in allowed_categories:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"User with role {current_user['role']} is not allowed to {action} claims in category {claim['claim_category']}",
+            )
+    if action in ["approve", "reject"]:
+        if "id" in current_user:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only authenticated guests can approve or reject their claims",
+            )
+        if claim["guest_id"] != current_user["phone_number"]:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only the guest who created the claim can approve or reject it",
+            )
+
+    if action == "approve" or action == "reject":
+        if claim["status"] != ClaimStatus.resolved.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be approved or rejected if it is in resolved status",
+            )
+        if action == "approve":
+            payload["approve_claim_time"] = datetime.now()
+        if action == "reject":
+            payload["reject_claim_time"] = datetime.now()
+    if action == "acknowledge":
+        if claim["status"] != ClaimStatus.pending.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be acknowledged if it is in pending status",
+            )
+        payload["acknowledged_employee_id"] = current_user["id"]
+        payload["acknowledged_claim_time"] = datetime.now()
+    if action == "resolve":
+        if claim["status"] != ClaimStatus.processing.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be resolved if it is in processing status",
+            )
+        payload["resolver_employee_id"] = current_user["id"]
+        payload["resolve_claim_time"] = datetime.now()
+
+    claim_controller.update(id, payload, db=db)
+
+    return ApiResponse(data="Claim updated successfully")

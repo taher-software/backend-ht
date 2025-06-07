@@ -1,15 +1,19 @@
-from app.globals.response import ApiResponse
-from app.globals.exceptions import ApiException
-from app.db.orm import get_db
+from src.app.globals.response import ApiResponse
+from src.app.globals.exceptions import ApiException
+from src.app.db.orm import get_db
 from fastapi import Depends, Request, status
-from app.globals.error import not_authenticated, invalid_token, Error
-from app.secrets.jwt import decode_jwt
-from app.resourcesController import users_controller, namespace_controller
-from app.globals.schema_models import Role
-from app.routers.auth.modelsOut import no_domain_error
+from src.app.globals.error import not_authenticated, invalid_token, Error
+from src.app.secrets.jwt import decode_jwt
+from src.app.resourcesController import users_controller, namespace_controller
+from src.app.globals.schema_models import Role
+from src.app.routers.auth.modelsOut import no_domain_error
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Literal
-from app.resourcesController import users_controller, claim_controller, guest_controller
+from src.app.resourcesController import (
+    users_controller,
+    claim_controller,
+    guest_controller,
+)
 
 
 class domain_auth:
@@ -68,7 +72,7 @@ class CurrentUserIdentifier(HTTPBearer):
                         if self.raise_error:
                             raise ApiException(
                                 status.HTTP_401_UNAUTHORIZED,
-                                Error("auth", "Employee Not Found"),
+                                Error(type="auth", message="Employee Not Found"),
                             )
                         return None
                 elif self.raise_error:
@@ -83,7 +87,7 @@ class CurrentUserIdentifier(HTTPBearer):
                         if self.raise_error:
                             raise ApiException(
                                 status.HTTP_401_UNAUTHORIZED,
-                                Error("auth", "Guest Not Found"),
+                                Error(type="auth", message="Guest Not Found"),
                             )
                         return None
                 elif self.raise_error:

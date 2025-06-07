@@ -1,4 +1,4 @@
-from app.db.orm import Base
+from src.app.db.orm import Base
 from sqlalchemy import (
     Column,
     String,
@@ -8,16 +8,19 @@ from sqlalchemy import (
     PickleType,
     ForeignKey,
     Float,
+    Enum,
 )
 from datetime import datetime
-from app.db.orm import get_utc_time
+from src.app.db.orm import get_utc_time
+from src.app.globals.schema_models import ClaimStatus
+from sqlalchemy.orm import relationship
 
 
 class Claim(Base):
     __tablename__ = "claim"
     id = Column(Integer, primary_key=True, index=True)
     guest_id = Column(ForeignKey("guest.phone_number", ondelete="CASCADE"))
-    status = Column(String(255), nullable=False, default="submitted")
+    status = Column(String(255), nullable=False, default=ClaimStatus.pending.value)
     stay_id = Column(ForeignKey("stay.id", ondelete="CASCADE"))
     claim_text = Column(String(1000))
     claim_title = Column(String(1000))
@@ -30,6 +33,7 @@ class Claim(Base):
     resolver_employee_id = Column(ForeignKey("users.id", ondelete="CASCADE"))
     resolve_claim_time = Column(DateTime, index=True, nullable=True)
     approve_claim_time = Column(DateTime, index=True, nullable=True)
+    reject_claim_time = Column(DateTime, index=True, nullable=True)
     claim_language = Column(String(255), nullable=False)
     claim_category = Column(String(255), nullable=False)
     namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"))
@@ -42,6 +46,16 @@ class Claim(Base):
         nullable=False,
         default=get_utc_time,
         onupdate=get_utc_time,
+    )
+    receiver = relationship(
+        "Users",
+        back_populates="received_claims",
+        foreign_keys=[acknowledged_employee_id],
+    )
+    resolver = relationship(
+        "Users",
+        back_populates="resolved_claims",
+        foreign_keys=[resolver_employee_id],
     )
 
     def to_dict(self):

@@ -1,5 +1,5 @@
 import uvicorn
-from config import start_app
+from src.config import start_app
 
 # import google.cloud.logging
 
@@ -11,4 +11,4 @@ app = start_app()
 
 
 if __name__ == "__main__":
-    uvicorn.run(app="main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app="main:app", host="0.0.0.0", port=8200, reload=True)

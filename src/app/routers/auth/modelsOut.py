@@ -1,11 +1,11 @@
 from pydantic import BaseModel
-from app.globals.response import ApiResponse
-from app.globals.status import Status
+from src.app.globals.response import ApiResponse
+from src.app.globals.status import Status
 from typing import Any
 from fastapi import status
-from app.globals.status import Status
-from app.globals.error import Error
-from app.globals.schema_models import GuestModel
+from src.app.globals.status import Status
+from src.app.globals.error import Error
+from src.app.globals.schema_models import GuestModel
 from pydantic import Field
 
 
@@ -94,5 +94,19 @@ class StayModel(BaseModel):
     menu_count: int | None = Field(None)
 
 
+class ClaimStats(BaseModel):
+    count: int | None = Field(None)
+    avg_time: float | None = Field(None)
+
+
+class EmployeeStats(BaseModel):
+
+    fullname: str = Field(...)
+    company_name: str = Field(...)
+    role: str = Field(...)
+    avatar: str = Field(None)
+    claims_stats: dict[str, ClaimStats] = Field(...)
+
+
 class MeResponse(ApiResponse):
-    data: StayModel
+    data: EmployeeStats | StayModel
