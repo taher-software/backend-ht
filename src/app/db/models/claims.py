@@ -57,6 +57,8 @@ class Claim(Base):
         back_populates="resolved_claims",
         foreign_keys=[resolver_employee_id],
     )
+    stay = relationship("Stay", back_populates="claims")
+    chat_rooms = relationship("ChatRoom", back_populates="claim")
 
     def to_dict(self):
         return {

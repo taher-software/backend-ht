@@ -1,10 +1,9 @@
 from src.app.db.orm import Base
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, PickleType
+from sqlalchemy import Column, String, Integer, DateTime, Boolean, PickleType, DATE
 from datetime import datetime
 from src.app.db.orm import get_utc_time
 from sqlalchemy.orm import relationship
-
-default_profile = "https://static.vecteezy.com/system/resources/thumbnails/009/734/564/small/default-avatar-profile-icon-of-social-media-user-vector.jpg"
+from src.settings import settings
 
 
 class Guest(Base):
@@ -12,10 +11,12 @@ class Guest(Base):
     phone_number = Column(String(255), primary_key=True, index=True)
     first_name = Column(String(255), nullable=False, index=True)
     last_name = Column(String(255), nullable=False)
-    birth_date = Column(DateTime, nullable=True)
-    avatar_url = Column(String(255), default=default_profile)
+    birth_date = Column(DATE, nullable=True)
+    avatar_url = Column(String(255), default=settings.default_profile)
     current_device_token = Column(String(255), nullable=True)
     pref_language = Column(String(255), nullable=True)
+    nationality = Column(String(255), nullable=False)
+    country_of_residence = Column(String(255), nullable=False)
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )
@@ -36,6 +37,7 @@ class Guest(Base):
         "DailyRestaurantSurvey", back_populates="guest"
     )
     dishes_surveys = relationship("DishesSurvey", back_populates="guest")
+    chat_rooms = relationship("ChatRoom", back_populates="guest")
 
     def to_dict(self):
         return {

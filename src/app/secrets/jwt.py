@@ -1,7 +1,7 @@
 import jwt
 from src.settings import settings
 from time import time
-from datetime import datetime
+from datetime import datetime, date
 import jwt
 from src.app.globals.exceptions import ApiException
 from fastapi import status
@@ -12,7 +12,7 @@ from time import time
 def sign_jwt(data: dict, expires=settings.jwt_access_expires) -> str:
     new_data = data.copy()
     for key, value in data.items():
-        if isinstance(value, datetime):
+        if isinstance(value, datetime) or isinstance(value, date):
             new_data.pop(key)
     payload = {"data": new_data, "expires": time() + expires}
 

@@ -1,0 +1,17 @@
+#db_url=postgresql://haggui:77471580t@localhost/bodor_db
+export db_url=postgresql://taher:77471580t@34.79.224.79:5432/bodor
+#DB_NAME=bodor_db
+export DB_NAME=bodor
+#DB_USER=haggui
+export DB_USER=taher
+export DB_PASSWORD=77471580t
+export celery_broker=redis://localhost:6379/0
+export celery_backend=redis://localhost:6379/0
+export mail_username=ttaherhagui@gmail.com
+export mail_pwd=jqlq vczg qgtj kobj
+export application_url=http://localhost:3000/
+export jwt_access_expires=14400
+export jwt_algorithm=HS256
+#db_url=postgresql://haggui:77471580t@localhost/bodor_db
+export jwt_secret=taher
+export openia_apikey=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

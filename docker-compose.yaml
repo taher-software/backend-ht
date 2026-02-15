@@ -1,0 +1,72 @@
+
+services:
+  bodor_api:
+    build:
+      context: .
+      target: bodor_web_app
+    env_file: .env
+    volumes:
+      - .:/app
+    command: >
+      sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --reload"
+    ports: 
+      - "8222:8000"
+    restart: unless-stopped
+    depends_on: 
+      - bodor_db
+  
+  bodor_db:
+    image: bitnami/postgresql:latest
+    volumes: 
+      - data_persistence:/bitnami/postgresql
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports: 
+      - "5433:5432"
+    env_file: .env
+  
+  # bodor_redis:
+  #   image: redis:latest
+  #   restart: unless-stopped
+
+  # celery_worker:
+  #   build:
+  #     context: .
+  #     target: bodor_web_app
+  #   command: "celery -A src.async_jobs worker -l INFO"
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - bodor_db
+  #     - bodor_redis
+
+  # beat_worker:
+  #   build:
+  #     context: .
+  #     target: bodor_web_app
+  #   volumes:
+  #     - .:/app
+  #   command: "celery -A src.async_jobs beat -l INFO"
+  #   depends_on:
+  #     - bodor_db
+  #     - bodor_redis
+  
+  # flower_worker:
+  #   build:
+  #     context: .
+  #     target: bodor_web_app
+  #   volumes:
+  #     - .:/app
+  #   command: "celery -A src.async_jobs flower --port=5555"
+  #   ports: 
+  #     - "5555:5555"
+  #   depends_on:
+  #     - bodor_db
+  #     - bodor_redis
+volumes:
+  data_persistence:
+
+
+

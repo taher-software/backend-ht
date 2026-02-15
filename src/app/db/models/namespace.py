@@ -35,6 +35,7 @@ class Namespace(Base):
     )
 
     users = relationship("Users", back_populates="namespace")
+    rooms = relationship("Room", back_populates="namespace")
     settings = relationship(
         "NamespaceSettings", back_populates="namespace", uselist=False
     )
@@ -45,11 +46,14 @@ class Namespace(Base):
         "RoomReceptionSurvey", back_populates="namespace"
     )
     dishes = relationship("Dishes", back_populates="namespace")
+    meals = relationship("Meal", back_populates="namespace")
     queue_root_causes = relationship("QueueRootCause", back_populates="namespace")
     daily_restaurant_surveys = relationship(
         "DailyRestaurantSurvey", back_populates="namespace"
     )
     dishes_surveys = relationship("DishesSurvey", back_populates="namespace")
+    chat_rooms = relationship("ChatRoom", back_populates="namespace")
+    messages = relationship("Message", back_populates="namespace")
 
     def to_dict(self):
         return {

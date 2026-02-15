@@ -11,7 +11,7 @@ class Dishes(Base):
     namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"), index=True)
 
     # Dish details
-    title = Column(String(255), index=True, nullable=False)
+    name = Column(String(255), index=True, nullable=False)
     description = Column(Text, nullable=True)
     img_url = Column(String(255), nullable=True)
 
@@ -30,6 +30,7 @@ class Dishes(Base):
     # Relationships
     namespace = relationship("Namespace", back_populates="dishes")
     surveys = relationship("DishesSurvey", back_populates="dish")
+    menus = relationship("Menu", back_populates="dish")
 
     def to_dict(self):
         return {

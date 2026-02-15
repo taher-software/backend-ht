@@ -12,3 +12,11 @@ class UserResponse(UserBase):
 
 class UserCreateResponse(ApiResponse):
     data: UserResponse
+
+
+class AddRoleResponse(ApiResponse):
+    data: UserResponse
+
+
+class RemoveRoleResponse(ApiResponse):
+    data: UserResponse

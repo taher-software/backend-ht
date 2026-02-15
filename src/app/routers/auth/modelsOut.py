@@ -19,6 +19,11 @@ no_user_error = Error(type="auth", message="no_user_associated_to_phone_number")
 
 hotel_exist_error = Error(type="auth", message="Hotel already registred!")
 
+invalid_credentials_error = Error(
+    type="auth",
+    message="Invalid credentials. Please verify your username and password.",
+)
+
 
 class NoDomainModel(ApiResponse):
     status: Status = Status.failed
@@ -33,6 +38,11 @@ class NoGuestModel(ApiResponse):
 class HotelEXistModel(ApiResponse):
     status: Status = Status.failed
     error: Error = hotel_exist_error
+
+
+class InvalidCredentialsModel(ApiResponse):
+    status: Status = Status.failed
+    error: Error = invalid_credentials_error
 
 
 no_guest_response: dict[int, dict[str, Any]] = {
@@ -53,6 +63,13 @@ hotel_existe_response: dict[int, dict[str, Any]] = {
     status.HTTP_409_CONFLICT: {
         "model": HotelEXistModel,
         "description": "Hotel Already Exist",
+    }
+}
+
+invalid_credentials_response: dict[int, dict[str, Any]] = {
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": InvalidCredentialsModel,
+        "description": "Invalid credentials provided",
     }
 }
 
@@ -92,6 +109,8 @@ class StayModel(BaseModel):
     claim_count: int | None = Field(None)
     survey_count: int | None = Field(None)
     menu_count: int | None = Field(None)
+    pref_language: str | None = Field(None)
+    phone_number: str = Field(..., pattern="^\+?[1-9]\d{1,14}$")
 
 
 class ClaimStats(BaseModel):
@@ -103,9 +122,11 @@ class EmployeeStats(BaseModel):
 
     fullname: str = Field(...)
     company_name: str = Field(...)
-    role: str = Field(...)
-    avatar: str = Field(None)
+    role: list[str] = Field(...)
+    avatar: str | None = None
     claims_stats: dict[str, ClaimStats] = Field(...)
+    phone_number: str = Field(..., pattern="^\+?[1-9]\d{1,14}$")
+    pref_language: str | None = Field(None)
 
 
 class MeResponse(ApiResponse):

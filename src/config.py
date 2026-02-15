@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, status, Request, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from src.app.db.orm import Base, engine
 from src.app.db import models
@@ -10,6 +10,10 @@ from src.app.globals.error import Error
 from fastapi.responses import JSONResponse
 from starlette.concurrency import iterate_in_threadpool
 from src.app.globals.response import ApiResponse
+from src.app.resourcesController import chatRoom_controller
+from src.settings import settings
+import json
+import logging
 
 
 def create_tables():
@@ -41,11 +45,11 @@ def start_app():
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_, exc: RequestValidationError):
         err = jsonable_encoder({"detail": exc.errors()})["detail"]
-        raise ApiException(
+        logging.error(f"Validation error: {err}")
+
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            error=Error(
-                type="Validation", message="validation_error", detail=err[0]["msg"]
-            ),
+            detail=err[0]["msg"],
         )
 
     @app.middleware("http")
@@ -62,6 +66,12 @@ def start_app():
             response = JSONResponse(
                 status_code=ex.status_code,
                 content=jsonable_encoder(ApiResponse(status="failed", error=ex.error)),
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": "*",
+                    "Access-Control-Allow-Headers": "*",
+                },
             )
         return response
 

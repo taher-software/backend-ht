@@ -7,9 +7,6 @@ class SettingsResponse(BaseModel):
     id: int | None = None
     namespace_id: int
 
-    # Timezone
-    timezone: str
-
     # Meal times
     breakfast_start_time: time
     breakfast_end_time: time

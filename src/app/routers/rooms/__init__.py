@@ -1,0 +1,68 @@
+from fastapi import APIRouter, Depends, Query
+from src.app.db.orm import get_db
+from src.app.globals.response import ApiResponse
+from src.app.globals.authentication import CurrentUserIdentifier
+from src.app.globals.generic_responses import validation_response
+from .modelsIn import CreateRoomsIn, UpdateRoomIn, DeleteRoomsIn
+from .modelsOut import RoomListItem
+from .services import create_rooms, update_room_number, get_all_rooms, delete_rooms
+
+router = APIRouter(prefix="/rooms", tags=["Rooms"], responses={**validation_response})
+
+
+@router.post("/")
+def create(
+    payload: CreateRoomsIn,
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """
+    Create new rooms starting from start_room_number.
+
+    Creates number_of_rooms rooms with sequential room numbers
+    from start_room_number to start_room_number + number_of_rooms - 1.
+    """
+    rooms = create_rooms(
+        namespace_id=current_user["namespace_id"],
+        start_room_number=payload.start_room_number,
+        number_of_rooms=payload.number_of_rooms,
+    )
+
+    return ApiResponse(data=[RoomListItem(**room) for room in rooms])
+
+
+@router.patch("/{room_id}")
+def update(
+    room_id: int,
+    payload: UpdateRoomIn,
+    db=Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """Update the room number of a specific room."""
+    updated_room = update_room_number(
+        room_id=room_id,
+        new_room_number=payload.new_room_number,
+        db=db,
+    )
+
+    return ApiResponse(data=RoomListItem(**updated_room))
+
+
+@router.get("/")
+def list_all(
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """List all rooms for the current user's namespace."""
+    result = get_all_rooms(namespace_id=current_user["namespace_id"])
+
+    return ApiResponse(data=[RoomListItem(**room) for room in result["items"]])
+
+
+@router.delete("/")
+def delete(
+    payload: DeleteRoomsIn,
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """Delete a list of rooms by their IDs."""
+    deleted_count = delete_rooms(room_ids=payload.room_ids)
+
+    return ApiResponse(data={"deleted_count": deleted_count})

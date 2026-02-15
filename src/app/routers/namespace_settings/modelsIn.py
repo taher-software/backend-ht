@@ -4,9 +4,6 @@ from typing import Optional
 
 
 class SettingsBase(BaseModel):
-    # Timezone
-    timezone: str = "UTC"
-
     # Meal times
     breakfast_start_time: time
     breakfast_end_time: time
@@ -16,11 +13,11 @@ class SettingsBase(BaseModel):
     dinner_end_time: time
 
     # Notification settings
-    restaurant_survey_time: time | None = None
-    room_survey_time: time | None = None
-    breakfast_menu_time: time | None = None
-    lunch_menu_time: time | None = None
-    dinner_menu_time: time | None = None
+    restaurant_survey_time: Optional[time] = None
+    room_survey_time: Optional[time] = None
+    breakfast_menu_time: Optional[time] = None
+    lunch_menu_time: Optional[time] = None
+    dinner_menu_time: Optional[time] = None
 
     # Check in/out times
     check_in_time: time
@@ -32,9 +29,6 @@ class SettingsCreate(SettingsBase):
 
 
 class SettingsUpdate(SettingsBase):
-    # Timezone
-    timezone: str | None = None
-
     # Meal times
     breakfast_start_time: time | None = None
     breakfast_end_time: time | None = None

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, status, Header, Query, Body
-from src.app.secrets.passwords import hash_password
 from src.app.db.orm import get_db
-from .modelsIn import NamespaceRegistry
+from .modelsIn import NamespaceRegistry, WebAppLogin
 from src.app.resourcesController import (
     users_controller,
     namespace_controller,
@@ -32,6 +31,7 @@ from src.app.routers.auth.modelsOut import (
     OtpModel,
     MeResponse,
     StayModel,
+    invalid_credentials_response,
 )
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.authentication import domain_auth, CurrentUserIdentifier
@@ -51,6 +51,15 @@ from datetime import datetime
 from src.app.globals.schema_models import ClaimStatus
 from src.app.globals.schema_models import role_categ_assoc
 from .services import detect_time_zone
+from .services import count_current_survey
+from .services import handle_register_new_domain
+from .services import handle_web_app_login
+from src.app.db.models.namespace_settings import NamespaceSettings
+from src.app.globals.utils import (
+    breakfast_eligible_plans,
+    lunch_eligible_plans,
+    dinner_eligible_plans,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"], responses={**validation_response})
 
@@ -65,65 +74,7 @@ async def register_new_domain(
     payload: NamespaceRegistry, avatar: UploadFile = File(None), db=Depends(get_db)
 ) -> ApiResponse:
 
-    payload_dict = dict(payload)
-    payload_map = DotMap(payload_dict)
-
-    check_hotel = (
-        db.query(Namespace)
-        .filter(
-            or_(
-                Namespace.business_registration_number
-                == payload_map.business_registration_number,
-                Namespace.tax_identification_number
-                == payload_map.tax_identification_number,
-                and_(
-                    Namespace.hotel_name == payload_map.hotel_name,
-                    Namespace.country == payload_map.country,
-                ),
-            )
-        )
-        .first()
-    )
-    if check_hotel:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT, error=hotel_exist_error
-        )
-    user_dict = dict(UsersModel(**payload_dict))
-    user_dict["hashed_password"] = hash_password(payload_dict.pop("password"))
-    user_dict["avatar_url"] = "https://avatars.githubusercontent.com/u/85107514?v=4"
-    namespace_dict = dict(NamespaceModel(**payload_dict))
-    namespace_dict["hotel_website_url"] = str(namespace_dict.pop("hotel_website_url"))
-    namespace["timezone"] = detect_time_zone(
-        namespace_dict["country"], namespace_dict["city"]
-    )
-    namespace_controller.create(namespace_dict)
-    namespace = (
-        db.query(Namespace)
-        .filter(
-            and_(
-                Namespace.country == payload_map.country,
-                Namespace.hotel_name == payload_map.hotel_name,
-            )
-        )
-        .first()
-    )
-    namespace_id = namespace.id
-    user_dict["namespace_id"] = namespace_id
-    try:
-        users_controller.create(user_dict)
-    except Exception as e:
-        namespace_controller.delete(namespace_id)
-        raise ApiException(status.HTTP_406_NOT_ACCEPTABLE, dbError(detail=str(e)))
-
-    owner_row = users_controller.find_by_field("user_email", payload_map.user_email)
-    verification_link = f"{settings.application_url}{sign_jwt(owner_row)}"
-    send_email(
-        payload_map.user_email,
-        payload_map.first_name,
-        verification_link,
-    )
-
-    return MessageResponse(data="New domain registred successfully!")
+    return handle_register_new_domain(payload, avatar)
 
 
 @router.post(
@@ -138,6 +89,7 @@ async def register_new_domain(
     },
 )
 def email_confirmation(token_registry: str = Header(...), da=Depends(domain_auth())):
+
     return MessageResponse(data="new Domain was succesfully confirmed!")
 
 
@@ -165,6 +117,20 @@ def resend_email_confirmation(user_email: EmailStr = Query):
 
 
 @router.post(
+    "/web_app_login",
+    response_model=GuestLoginResponse,
+    description="API for web app login with username and password",
+    responses={**invalid_credentials_response},
+)
+def web_app_login(
+    payload: WebAppLogin,
+    db=Depends(get_db),
+) -> ApiResponse:
+    result = handle_web_app_login(payload.username, payload.password, db)
+    return GuestLoginResponse(data=GuestLogin(token=result["token"]))
+
+
+@router.post(
     "/mobile_login",
     description="API for sign in guest to mobile app",
     response_model=GuestLoginResponse,
@@ -173,6 +139,7 @@ def resend_email_confirmation(user_email: EmailStr = Query):
 def mobile_login(
     phone_number: str = Body(..., pattern="^\+?[1-9]\d{1,14}$"),
     push_token: str | None = Body(None),
+    db=Depends(get_db),
 ) -> ApiResponse:
 
     app_user = guest_controller.find_by_id(phone_number)
@@ -183,7 +150,7 @@ def mobile_login(
             raise ApiException(status.HTTP_404_NOT_FOUND, no_user_error)
         if push_token:
             users_controller.update(
-                app_user["id"], dict(current_device_token=push_token)
+                app_user["id"], dict(current_device_token=push_token), db=db
             )
 
         return GuestLoginResponse(data=GuestLogin(token=sign_jwt(app_user)))
@@ -192,6 +159,7 @@ def mobile_login(
             app_user["phone_number"],
             dict(current_device_token=push_token),
             resource_key="phone_number",
+            db=db,
         )
     return GuestLoginResponse(data=GuestLogin(token=sign_jwt(app_user)))
 
@@ -216,7 +184,7 @@ def me(
             .order_by(desc(Stay.start_date))
             .first()
         )
-        today = datetime.now()
+        today = datetime.now().date()
 
         sejour = dict(stay=False)
         sejour["fullname"] = (
@@ -224,25 +192,64 @@ def me(
         )
 
         sejour["avatar"] = current_guest["avatar_url"]
+        sejour["phone_number"] = current_guest["phone_number"]
+
         if not current_stay:
             stay_model = StayModel(**sejour)
             return MeResponse(data=stay_model)
         if today >= current_stay.start_date and today <= current_stay.end_date:
 
+            meal_plan = current_stay.meal_plan
             sejour["stay"] = True
             namespace = namespace_controller.find_by_id(current_stay.namespace_id)
-            sejour["hotel_name"] = namespace["hotel_name"]
             sejour["hotel_name"] = namespace["hotel_name"]
             sejour["country"] = namespace["country"]
 
             claim_count = len(
                 db.query(Claim).filter(Claim.stay_id == current_stay.id).all()
             )
-            survey_count = 1  # it should be computed whenever survey is added
-            menu_count = 1  # it should be computed whenever menu is added
-            sejour["claim_count"] = claim_count
-            sejour["survey_count"] = survey_count
+
+            ns_settings = (
+                db.query(NamespaceSettings)
+                .filter(NamespaceSettings.namespace_id == current_stay.namespace_id)
+                .first()
+            )
+            menu_count = 0
+            if ns_settings:
+                now = datetime.now().time()
+                if (
+                    (
+                        (
+                            ns_settings.breakfast_menu_time
+                            <= now
+                            <= ns_settings.breakfast_end_time
+                        )
+                        and (meal_plan in breakfast_eligible_plans)
+                    )
+                    or (
+                        (
+                            ns_settings.lunch_menu_time
+                            <= now
+                            <= ns_settings.lunch_end_time
+                        )
+                        and (meal_plan in lunch_eligible_plans)
+                    )
+                    or (
+                        (
+                            ns_settings.dinner_menu_time
+                            <= now
+                            <= ns_settings.dinner_end_time
+                        )
+                        and (meal_plan in dinner_eligible_plans)
+                    )
+                ):
+                    menu_count = 1
             sejour["menu_count"] = menu_count
+            sejour["claim_count"] = claim_count
+            sejour["survey_count"] = count_current_survey(
+                db, current_stay.namespace_id, current_guest["phone_number"]
+            )
+            sejour["pref_language"] = current_guest["pref_language"]
 
         stay_model = StayModel(**sejour)
         return MeResponse(data=stay_model)
@@ -255,8 +262,13 @@ def me(
 
         today = datetime.now().date()
 
-        # Get allowed categories for user's role
-        allowed_categories = role_categ_assoc.get(user.role, [])
+        # Get allowed categories for user's roles
+        allowed_categories = []
+        for role in user.role:
+            categories = role_categ_assoc.get(role, [])
+            allowed_categories.extend(categories)
+        # Remove duplicates
+        allowed_categories = list(set(allowed_categories))
 
         # Base query filtering by namespace, date and allowed categories
         base_claims_query = db.query(Claim).filter(
@@ -316,6 +328,8 @@ def me(
             "role": user.role,
             "avatar": user.avatar_url,
             "claims_stats": claims_stats,
+            "phone_number": user.phone_number if user.phone_number else "",
+            "pref_language": user.pref_language if user.pref_language else None,
         }
 
         return MeResponse(data=user_data)

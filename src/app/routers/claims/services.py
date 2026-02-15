@@ -1,23 +1,32 @@
-from openai import OpenAI
 from dotmap import DotMap
 from .modelsIn import ClaimIn
 import os
-from src.app.resourcesController import claim_controller, namespace_controller
+from src.app.resourcesController import (
+    claim_controller,
+    namespace_controller,
+    chatRoom_controller,
+)
 from src.app.globals.notification import send_push_notification
-from src.app.globals.schema_models import role_categ_assoc
-from src.app.db.models import Users, Stay
+from src.app.globals.schema_models import role_categ_assoc, ClaimStatus
+from src.app.db.models import Users, Stay, Room
+from src.app.db.models.claims import Claim
 from src.app.gcp.gcs import storage_client
-from fastapi import UploadFile
-from sqlalchemy import desc, and_, or_
+from fastapi import UploadFile, HTTPException, status
+from sqlalchemy import asc, desc, and_, or_, func
+from sqlalchemy.orm import selectinload
 from src.app.globals.decorators import transactional
-from pathlib import Path
 import tempfile
 from src.settings import client
+from functools import lru_cache
+from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
+from datetime import datetime
+from typing import Literal
 
 
+@lru_cache
 def detect_language(text: str) -> str:
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -29,9 +38,10 @@ def detect_language(text: str) -> str:
     return completion.choices[0].message.content
 
 
+@lru_cache
 def define_category(claim_text: str) -> str:
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -48,17 +58,10 @@ def define_category(claim_text: str) -> str:
     return completion.choices[0].message.content
 
 
-def transcript_audio(audio_path: str) -> str:
-    audio_file = open(audio_path, "rb")
-    transcription = client.audio.transcriptions.create(
-        model="whisper-1", file=audio_file
-    )
-    return transcription.text
-
-
+@lru_cache
 def translate_text(origin_language: str, target_language: str, text: str) -> str:
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -74,9 +77,10 @@ def translate_text(origin_language: str, target_language: str, text: str) -> str
     return completion.choices[0].message.content
 
 
+@lru_cache
 def create_body_notif(text: str, language: str, room_number: int | str):
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -97,9 +101,10 @@ def create_body_notif(text: str, language: str, room_number: int | str):
     return completion.choices[0].message.content
 
 
+@lru_cache
 def create_title_notif(language: str):
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -115,9 +120,10 @@ def create_title_notif(language: str):
     return completion.choices[0].message.content
 
 
+@lru_cache
 def country_mother_language(country: str):
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -133,9 +139,10 @@ def country_mother_language(country: str):
     return completion.choices[0].message.content
 
 
+@lru_cache
 def create_claim_title(claim_text: str, language: str):
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -146,6 +153,53 @@ def create_claim_title(claim_text: str, language: str):
         ],
     )
     return completion.choices[0].message.content
+
+
+@lru_cache
+def create_resume_claim(
+    claim_text: str,
+    voice_url: str,
+    target_language: str,
+) -> str:
+    """
+    Create a resume/summary of a claim by downloading the voice file from GCS,
+    transcribing it, and generating a summary in the target language.
+
+    Args:
+        claim_text: The text content of the claim
+        voice_url: The Google Cloud Storage URL of the voice file
+        target_language: The language to generate the resume in
+
+    Returns:
+        A summary/resume of the claim in the target language
+    """
+    if voice_url:
+        transcribed_text = transcribe_audio_from_gcs_link(voice_url)
+
+    prompt_engineering = f"""
+    # Role and Objective
+- The AI assistant generates concise summaries of hotel guest claims for hotel agents.
+# Instructions
+- Create a brief summary (2-3 sentences) in `{target_language}` using the provided claim text and transcribed voice text.
+- The summary must:
+- Highlight the main issue
+- Include key details
+- Maintain a professional tone
+- The summary should deliver a clear message that helps the hotel agent understand the guest's claim.
+- Return only the summary text, with no extra commentary or formatting.
+# Context
+- Claim Text: `{claim_text if claim_text else 'N/A'}`
+- Transcribed Voice Text: `{transcribed_text if voice_url else 'N/A'}`
+# Output Format
+- Provide only the summary as plain text in `{target_language}`.
+- Output Verbosity: Limit the summary to a maximum of 3 sentences. Do not exceed this cap.
+- Prioritize complete, actionable summaries within this length limit. Do not increase length to restate politeness.
+# Stop Conditions
+- Complete when the summary is generated following the guidelines above.
+    """
+    response = client.responses.create(model="gpt-5-nano", input=prompt_engineering)
+
+    return response.output_text
 
 
 @transactional
@@ -179,9 +233,9 @@ def add_guest_claims(
                 with open(destination_file, "wb") as f:
                     f.write(img.file.read())
                 img_url = storage_client.upload_to_bucket(
-                    "book-management-api-58a60.appspot.com",
+                    "image_claim_files",
                     destination_file,
-                    f"image_claim_files/{img.filename}",
+                    img.filename,
                 )
                 img_urls.append(img_url)
         claim_dict.update(dict(claim_images_url=img_urls))
@@ -192,9 +246,9 @@ def add_guest_claims(
             with open(destination_file, "wb") as f:
                 f.write(vid_file.file.read())
             vid_url = storage_client.upload_to_bucket(
-                "book-management-api-58a60.appspot.com",
+                "video_claim_files",
                 destination_file,
-                f"video_claim_files/{vid_file.filename}",
+                vid_file.filename,
             )
         claim_dict.update(dict(claim_video_url=vid_url))
     if voice_file:
@@ -208,9 +262,9 @@ def add_guest_claims(
             claim_language = detect_language(claim_text)
             claim_category = define_category(claim_text)
             voice_url = storage_client.upload_to_bucket(
-                "book-management-api-58a60.appspot.com",
+                "voice_claim_files",
                 destination_file,
-                f"voice_claim_files/{voice_file.filename}",
+                voice_file.filename,
             )
 
         claim_dict.update(
@@ -221,8 +275,7 @@ def add_guest_claims(
                 claim_voice_duration=payload.voice_duration,
             )
         )
-    else:
-        print("no voice file received...")
+
     claim_title = create_claim_title(
         claim_text,
         claim_language,
@@ -231,6 +284,7 @@ def add_guest_claims(
 
     stay = (
         db.query(Stay)
+        .options(selectinload(Stay.room))
         .filter(Stay.guest_id == guest.phone_number)
         .order_by(desc(Stay.start_date))
         .first()
@@ -239,7 +293,7 @@ def add_guest_claims(
     claim_dict.update(dict(namespace_id=stay.namespace_id))
     claim_dict.update(dict(stay_id=stay.id))
 
-    claim_controller.create(claim_dict, commit=True, db=db)
+    claim_controller.create(claim_dict, commit=False, db=db)
 
     role = [key for key, vl in role_categ_assoc.items() if claim_category in vl]
 
@@ -250,8 +304,8 @@ def add_guest_claims(
             and_(
                 Users.namespace_id == stay.namespace_id,
                 or_(
-                    Users.role.contains(role),
-                    Users.role.contains("supervisor"),
+                    Users.role.contains([role]),
+                    Users.role.contains(["supervisor"]),
                 ),
             )
         )
@@ -264,10 +318,151 @@ def add_guest_claims(
     print(f"namespace language: {namespace_language}")
     notif_title = create_title_notif(namespace_language)
     print(f"notif title: {notif_title}")
-    notif_body = create_body_notif(claim_text, namespace_language, stay.stay_room)
+    notif_body = create_body_notif(
+        claim_text, namespace_language, stay.room.room_number
+    )
     print(f"notif title: {notif_body}")
 
     # review the case with unknown type
     for emp in employees:
 
         send_push_notification(emp.current_device_token, notif_title, notif_body)
+
+
+@transactional
+def update_claim_status(
+    action: Literal["approve", "reject", "acknowledge", "resolve"],
+    claim_id: int,
+    current_user: dict,
+    db=None,
+):
+    """
+    Update claim status based on action.
+
+    Args:
+        action: The action to perform (approve, reject, acknowledge, resolve)
+        claim_id: ID of the claim to update
+        current_user: Current authenticated user or guest
+        db: Database session
+
+    Returns:
+        str: Success message
+
+    Raises:
+        HTTPException: If validation fails
+    """
+    action_map_assoc = {
+        "approve": ClaimStatus.closed.value,
+        "reject": ClaimStatus.rejected.value,
+        "acknowledge": ClaimStatus.processing.value,
+        "resolve": ClaimStatus.resolved.value,
+    }
+    payload = {"status": action_map_assoc[action]}
+    claim = claim_controller.find_by_id(claim_id)
+
+    if not claim:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Claim with id {claim_id} not found",
+        )
+
+    if action in ["acknowledge", "resolve"]:
+        if "id" not in current_user:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only authenticated users can acknowledge or resolve claims",
+            )
+        # Get allowed categories for user's role
+        allowed_categories = []
+        for role in current_user.get("role", []):
+            allowed_categories.extend(role_categ_assoc.get(role, []))
+        if claim["claim_category"] not in allowed_categories:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"User with role {current_user['role']} is not allowed to {action} claims in category {claim['claim_category']}",
+            )
+
+    if action in ["approve", "reject"]:
+        if "id" in current_user:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only authenticated guests can approve or reject their claims",
+            )
+        if claim["guest_id"] != current_user["phone_number"]:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Only the guest who created the claim can approve or reject it",
+            )
+
+    if action == "approve" or action == "reject":
+        if claim["status"] != ClaimStatus.resolved.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be approved or rejected if it is in resolved status",
+            )
+        if action == "approve":
+            payload["approve_claim_time"] = datetime.now()
+            # Deactivate chat room associated with this claim
+            chat_room = chatRoom_controller.find_by_field("claim_id", claim_id)
+            if chat_room:
+                chatRoom_controller.update(
+                    chat_room["id"], {"active": False}, commit=False, db=db
+                )
+        if action == "reject":
+            payload["reject_claim_time"] = datetime.now()
+
+    if action == "acknowledge":
+        if claim["status"] != ClaimStatus.pending.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be acknowledged if it is in pending status",
+            )
+        payload["acknowledged_employee_id"] = current_user["id"]
+        payload["acknowledged_claim_time"] = datetime.now()
+
+    if action == "resolve":
+        if claim["status"] != ClaimStatus.processing.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Claim can only be resolved if it is in processing status",
+            )
+        payload["resolver_employee_id"] = current_user["id"]
+        payload["resolve_claim_time"] = datetime.now()
+
+    claim_controller.update(claim_id, payload, db=db, commit=False)
+
+    return "Claim updated successfully"
+
+
+def get_current_employee_claims(
+    current_user: dict,
+    page: int = 1,
+    page_size: int = 10,
+    room_number: int | None = None,
+    created_at_sort: str = "desc",
+    updated_at_sort: str = "desc",
+    claim_status: ClaimStatus | None = None,
+    db=None,
+):
+    query = (
+        db.query(Claim)
+        .options(selectinload(Claim.stay).selectinload(Stay.room))
+        .filter(Claim.namespace_id == current_user["namespace_id"])
+    )
+
+    if room_number is not None:
+        query = query.join(Claim.stay).join(Stay.room).filter(
+            Room.room_number == str(room_number)
+        )
+
+    if claim_status is not None:
+        query = query.filter(Claim.status == claim_status.value)
+
+    created_at_order = asc(Claim.created_at) if created_at_sort == "asc" else desc(Claim.created_at)
+    updated_at_order = asc(Claim.updated_at) if updated_at_sort == "asc" else desc(Claim.updated_at)
+    query = query.order_by(created_at_order, updated_at_order)
+
+    total = query.count()
+    claims = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return claims, total

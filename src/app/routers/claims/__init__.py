@@ -16,19 +16,21 @@ from .modelsIn import ClaimIn
 from .services import (
     detect_language,
     define_category,
-    transcript_audio,
     translate_text,
     country_mother_language,
     create_body_notif,
     create_title_notif,
     create_claim_title,
     add_guest_claims,
+    create_resume_claim,
+    update_claim_status,
+    get_current_employee_claims,
 )
+from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
 from pathlib import Path
 import os
 from src.app.gcp.gcs import storage_client
 from src.app.db.models.claims import Claim
-from src.app.resourcesController import claim_controller, namespace_controller
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.notification import send_push_notification
 from src.app.globals.schema_models import role_categ_assoc
@@ -37,7 +39,13 @@ from src.app.db.models import Users, Stay
 from sqlalchemy import desc, and_, or_, any_
 from dotmap import DotMap
 from datetime import datetime
-from src.app.routers.claims.modelsOut import ClaimGI, ClaimDetails, ClaimDetailsResponse
+from src.app.routers.claims.modelsOut import (
+    ClaimGI,
+    ClaimDetails,
+    ClaimDetailsResponse,
+    ExtendedClaimDetails,
+    ClaimWithRoom,
+)
 from mutagen.mp3 import MP3
 from fastapi import Query
 from typing import Literal
@@ -80,7 +88,7 @@ def guest_current_stay_claims(
         .first()
     )
 
-    today = datetime.now()
+    today = datetime.now().date()
 
     if today >= current_stay.start_date and today <= current_stay.end_date:
 
@@ -95,15 +103,14 @@ def guest_current_stay_claims(
                 )
             )
             .order_by(desc(Claim.created_at))
-            .offset(page * limit)
-            .limit(limit)
-            .all()
         )
+        total_claims = claims.count()
+        claims = claims.offset(page * limit).limit(limit).all()
 
         return ApiResponse(
             data={
                 "claims": [ClaimGI(**claim.to_dict()) for claim in claims],
-                "total": len(claims),
+                "total": total_claims,
             }
         )
     else:
@@ -118,7 +125,7 @@ def get_claim_details(
     id: int = pth(...),
     current_guest: dict = Depends(CurrentUserIdentifier(who="any")),
     db=Depends(get_db),
-) -> ClaimDetails:
+) -> ExtendedClaimDetails:
 
     claim = (
         db.query(Claim)
@@ -135,13 +142,39 @@ def get_claim_details(
                 f"The requested claim with id {id} doesn't belong to the current user ",
             )
     else:
-        if claim.claim_category not in role_categ_assoc.get(current_guest["role"], []):
+        roles = current_guest.get("role", [])
+        if not roles:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Current user does not have a valid role",
+            )
+        categ_assoc = []
+        for role in roles:
+            categ_assoc.extend(role_categ_assoc.get(role, []))
+
+        if claim.claim_category not in categ_assoc:
             raise HTTPException(
                 status.HTTP_406_NOT_ACCEPTABLE,
                 f"The requested claim with id {id} doesn't belong to the current user scope ",
             )
 
-    return ClaimDetails.model_validate(claim)
+    # claim_details = ClaimDetails.model_validate(claim)
+    extended_claim_details = ExtendedClaimDetails.model_validate(claim)
+    if "id" in current_guest:
+        claim_title = extended_claim_details.claim_title
+        claim_text = extended_claim_details.claim_text
+        claim_voice_url = claim.claim_voice_url
+        if claim_title:
+            claim_language = detect_language(claim_title)
+            user_language = current_guest.get("pref_language")
+            if claim_language != user_language:
+                claim_resume = create_resume_claim(
+                    claim_text, claim_voice_url, user_language
+                )
+                extended_claim_details.claim_summary = claim_resume
+                # extended_claim_details.claim_title = translate_text(claim_title)
+
+    return extended_claim_details
 
 
 @router.get("/claims_status_listing")
@@ -177,79 +210,50 @@ def get_claims_status_listing(
     )
 
 
+@router.get("/current_employes")
+def current_employee_claims(
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    room_number: int | None = Query(None, description="Filter by room number"),
+    created_at: Literal["asc", "desc"] = Query("desc", description="Sort order for created_at"),
+    updated_at: Literal["asc", "desc"] = Query("desc", description="Sort order for updated_at"),
+    status: ClaimStatus | None = Query(None, description="Filter by claim status"),
+) -> ApiResponse:
+    """
+    Retrieve today's claims for the current employee's namespace.
+
+    Returns a paginated list of claims with their associated room,
+    filtered by room_number and status if provided,
+    sorted by created_at and updated_at.
+    """
+    claims, total = get_current_employee_claims(
+        current_user=current_user,
+        page=page,
+        page_size=page_size,
+        room_number=room_number,
+        created_at_sort=created_at,
+        updated_at_sort=updated_at,
+        claim_status=status,
+        db=db,
+    )
+
+    return ApiResponse(
+        data={
+            "claims": [ClaimWithRoom.model_validate(claim) for claim in claims],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    )
+
+
 @router.patch("/{action}/{id}")
 def update_claim(
     action: Literal["approve", "reject", "acknowledge", "resolve"],
     id: int,
     current_user: dict = Depends(CurrentUserIdentifier(who="any")),
-    db=Depends(get_db),
 ) -> ApiResponse:
-    action_map_assoc = {
-        "approve": ClaimStatus.closed.value,
-        "reject": ClaimStatus.rejected.value,
-        "acknowledge": ClaimStatus.processing.value,
-        "resolve": ClaimStatus.resolved.value,
-    }
-    payload = {"status": action_map_assoc[action]}
-    claim = claim_controller.find_by_id(id)
-    if not claim:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            f"Claim with id {id} not found",
-        )
-    if action in ["acknowledge", "resolve"]:
-
-        if "id" not in current_user:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Only authenticated users can acknowledge or resolve claims",
-            )
-        # Get allowed categories for user's role
-        allowed_categories = role_categ_assoc.get(current_user["role"], [])
-        if claim["claim_category"] not in allowed_categories:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                f"User with role {current_user['role']} is not allowed to {action} claims in category {claim['claim_category']}",
-            )
-    if action in ["approve", "reject"]:
-        if "id" in current_user:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Only authenticated guests can approve or reject their claims",
-            )
-        if claim["guest_id"] != current_user["phone_number"]:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Only the guest who created the claim can approve or reject it",
-            )
-
-    if action == "approve" or action == "reject":
-        if claim["status"] != ClaimStatus.resolved.value:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Claim can only be approved or rejected if it is in resolved status",
-            )
-        if action == "approve":
-            payload["approve_claim_time"] = datetime.now()
-        if action == "reject":
-            payload["reject_claim_time"] = datetime.now()
-    if action == "acknowledge":
-        if claim["status"] != ClaimStatus.pending.value:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Claim can only be acknowledged if it is in pending status",
-            )
-        payload["acknowledged_employee_id"] = current_user["id"]
-        payload["acknowledged_claim_time"] = datetime.now()
-    if action == "resolve":
-        if claim["status"] != ClaimStatus.processing.value:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Claim can only be resolved if it is in processing status",
-            )
-        payload["resolver_employee_id"] = current_user["id"]
-        payload["resolve_claim_time"] = datetime.now()
-
-    claim_controller.update(id, payload, db=db)
-
-    return ApiResponse(data="Claim updated successfully")
+    result = update_claim_status(action=action, claim_id=id, current_user=current_user)
+    return ApiResponse(data=result)

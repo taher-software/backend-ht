@@ -1,8 +1,19 @@
+from typing_extensions import Literal
 import requests
 import logging
 
+notif_type = dict(
+    urgent=dict(channelId="urgent", sound="notif.wav"),
+    message=dict(channelId="message", sound="message_notif.wav"),
+)
 
-def send_push_notification(expo_push_token, title, message):
+
+def send_push_notification(
+    expo_push_token,
+    title,
+    message,
+    notif_level: Literal["urgent", "message"] = "urgent",
+):
     url = "https://api.expo.dev/v2/push/send?useFcmV1=true"
     headers = {
         "Content-Type": "application/json",
@@ -11,9 +22,9 @@ def send_push_notification(expo_push_token, title, message):
     }
     payload = {
         "to": expo_push_token,
-        "sound": "default",  # Ensures an alert with sound
         "title": title,
         "body": message,
+        **notif_type[notif_level],
     }
     print(f"expo_push_token: {expo_push_token}")
     logging.info(f"expo_push_token: {expo_push_token}")

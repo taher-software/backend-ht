@@ -54,17 +54,30 @@ class dbController(DbControllerInterface):
         payload = result.to_dict()
         return payload
 
-    def get_all(self, limit: int | None = None, namespace_id: int | None = None):
+    def get_all(
+        self,
+        limit: int | None = None,
+        namespace_id: int | None = None,
+        offset: int | None = None,
+        total: bool = False,
+    ):
         data = self.db.query(self.resource).filter(
             self.resource.namespace_id == namespace_id
         )
+        response = {}
+        if offset:
+            data = data.offset(offset)
         if limit:
             data = data.limit(limit)
+        if total:
+            total_count = data.count()
+            response["total"] = total_count
         data = data.all()
         result = []
         for elt in data:
             result.append(elt.to_dict())
-        return result
+        response["items"] = result
+        return response
 
     def create(self, metadata: dict, db, commit: bool = True, **kwargs):
         resource = self.resource(**metadata)
@@ -73,7 +86,7 @@ class dbController(DbControllerInterface):
             db.commit()
         else:
             db.flush()
-        return metadata
+        return resource.to_dict()
 
     def update(self, resource_id, metadata, resource_key="id", commit=True, **kwargs):
         db = kwargs["db"]
@@ -86,7 +99,21 @@ class dbController(DbControllerInterface):
         db.commit() if commit else db.flush()
         return row_data
 
-    def delete(self, resource_id, **kwargs):
+    def delete(self, resource_id, commit: bool = True, **kwargs):
         db = kwargs["db"]
         db.query(self.resource).filter(self.resource.id == resource_id).delete()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         return True
+
+    def find_by_params(self, params: dict, **kwargs):
+        db = kwargs["db"]
+        query = db.query(self.resource)
+        for key, value in params.items():
+            query = query.filter(getattr(self.resource, key) == value)
+        result = query.first()
+        if not result:
+            return None
+        return result.to_dict()

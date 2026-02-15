@@ -3,6 +3,11 @@ from typing import Any
 import json
 
 
+class WebAppLogin(BaseModel):
+    username: str = Field(..., description="Phone number used as username")
+    password: str = Field(..., min_length=1, description="User password")
+
+
 class NamespaceRegistry(BaseModel):
     hotel_name: str = Field(...)
     hotel_email: str | None = Field(None)
@@ -12,13 +17,13 @@ class NamespaceRegistry(BaseModel):
     business_registration_number: str = Field(...)
     tax_identification_number: str = Field(...)
     country: str = Field(...)
-    province: str = Field(None)
+    province: str | None = Field(None)
     postal_code: str = Field(...)
     city: str = Field(...)
-    number_of_rooms: int | None = None
+    number_of_rooms: int = Field(...)
     first_name: str = Field(...)
     last_name: str = Field(...)
-    password: str = Field(...)
+    # password: str = Field(...)
     user_email: EmailStr = Field(...)
     phone_number: str = Field(..., pattern="^\+?[1-9]\d{1,14}$")
 

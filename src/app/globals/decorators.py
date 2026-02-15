@@ -1,4 +1,7 @@
 from functools import wraps
+from http import client
+
+from openai import OpenAI
 from src.app.db.orm import get_db
 
 

@@ -62,7 +62,7 @@ class UsersModel(BaseModel):
     first_name: str = Field(...)
     last_name: str = Field(...)
     hashed_password: str = Field(None)
-    role: Role = Field(default=Role.owner)
+    role: list[Role] = Field(default=[Role.owner])
     phone_number: str = Field(..., pattern="^\+?[1-9]\d{1,14}$")
 
 
