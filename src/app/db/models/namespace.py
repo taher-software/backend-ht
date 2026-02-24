@@ -54,6 +54,7 @@ class Namespace(Base):
     dishes_surveys = relationship("DishesSurvey", back_populates="namespace")
     chat_rooms = relationship("ChatRoom", back_populates="namespace")
     messages = relationship("Message", back_populates="namespace")
+    housekeepers = relationship("Housekeeper", back_populates="namespace")
 
     def to_dict(self):
         return {

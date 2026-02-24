@@ -15,3 +15,4 @@ from .meals import Meal
 from .menu import Menu
 from .chat_room import ChatRoom
 from .message import Message, OwnerType
+from .housekeepers import Housekeeper

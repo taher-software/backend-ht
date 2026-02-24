@@ -19,6 +19,7 @@ from src.app.db.models import (
     Message,
     Meal,
     Menu,
+    Housekeeper,
 )
 
 users_controller = dbController(Users)
@@ -28,7 +29,9 @@ claim_controller = dbController(Claim)
 room_controller = dbController(Room)
 stay_controller = dbController(Stay)
 settings_controller = dbController(NamespaceSettings)
-daily_room_satisfaction_survey_controller = dbController(DailyRoomSatisfactionSurvey)
+daily_room_satisfaction_survey_controller = dbController(
+    DailyRoomSatisfactionSurvey
+)
 room_reception_survey_controller = dbController(RoomReceptionSurvey)
 daily_restaurant_survey_controller = dbController(DailyRestaurantSurvey)
 dishes_survey_controller = dbController(DishesSurvey)
@@ -38,3 +41,4 @@ chatRoom_controller = dbController(ChatRoom)
 message_controller = dbController(Message)
 meal_controller = dbController(Meal)
 menu_controller = dbController(Menu)
+housekeeper_controller = dbController(Housekeeper)
