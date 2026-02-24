@@ -1,3 +1,4 @@
 alembic/
 alembic.ini
 *.md
+./claude/

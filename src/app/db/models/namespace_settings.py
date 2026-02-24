@@ -8,7 +8,7 @@ class NamespaceSettings(Base):
     __tablename__ = "namespace_settings"
 
     id = Column(Integer, primary_key=True, index=True)
-    namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"), index=True)
+    namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"), index=True, unique=True)
 
     # Meal times
     breakfast_start_time = Column(Time, index=True, nullable=False)

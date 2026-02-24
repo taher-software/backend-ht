@@ -52,9 +52,9 @@ def list_all(
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
     """List all rooms for the current user's namespace."""
-    result = get_all_rooms(namespace_id=current_user["namespace_id"])
+    rooms = get_all_rooms(namespace_id=current_user["namespace_id"])
 
-    return ApiResponse(data=[RoomListItem(**room) for room in result["items"]])
+    return ApiResponse(data=[RoomListItem(**room) for room in rooms])
 
 
 @router.delete("/")

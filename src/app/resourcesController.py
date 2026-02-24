@@ -17,6 +17,8 @@ from src.app.db.models import (
     QueueRootCause,
     ChatRoom,
     Message,
+    Meal,
+    Menu,
 )
 
 users_controller = dbController(Users)
@@ -34,3 +36,5 @@ dishes_controller = dbController(Dishes)
 queue_root_cause_controller = dbController(QueueRootCause)
 chatRoom_controller = dbController(ChatRoom)
 message_controller = dbController(Message)
+meal_controller = dbController(Meal)
+menu_controller = dbController(Menu)

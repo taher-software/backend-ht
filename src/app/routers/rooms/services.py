@@ -1,5 +1,7 @@
 from src.app.resourcesController import room_controller
 from src.app.globals.decorators import transactional
+from src.app.db.models.room import Room
+from sqlalchemy import cast, Integer, desc
 from fastapi import HTTPException, status
 
 
@@ -33,7 +35,14 @@ def update_room_number(room_id: int, new_room_number: int, db=None):
 
 
 def get_all_rooms(namespace_id: int):
-    return room_controller.get_all(namespace_id=namespace_id)
+    db = room_controller.db
+    rooms = (
+        db.query(Room)
+        .filter(Room.namespace_id == namespace_id)
+        .order_by(desc(cast(Room.room_number, Integer)))
+        .all()
+    )
+    return [room.to_dict() for room in rooms]
 
 
 @transactional

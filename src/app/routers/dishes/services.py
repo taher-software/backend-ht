@@ -6,6 +6,8 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 from src.app.gcp.gcs import storage_client
+import tempfile
+import os
 
 
 def create_dish(
@@ -44,11 +46,15 @@ def create_dish(
         # Use the provided URL, ignore file if both are present
         data["img_url"] = str(img_url).strip()
     elif img_file:
-        url = storage_client.upload_to_bucket(
-            "dishes_image_files",
-            img_file.file,
-            img_file.filename,
-        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            destination_file = os.path.join(temp_dir, img_file.filename)
+            with open(destination_file, "wb") as f:
+                f.write(img_file.file.read())
+            url = storage_client.upload_to_bucket(
+                "dishes_image_files",
+                destination_file,
+                img_file.filename,
+            )
         data["img_url"] = url
     else:
         raise HTTPException(
@@ -120,11 +126,15 @@ def patch_dish(
 
     # If img_file is provided and img_url is not, upload and update img_url
     if not data.get("img_url") and img_file:
-        url = storage_client.upload_to_bucket(
-            "dishes_image_files",
-            img_file.file,
-            img_file.filename,
-        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            destination_file = os.path.join(temp_dir, img_file.filename)
+            with open(destination_file, "wb") as f:
+                f.write(img_file.file.read())
+            url = storage_client.upload_to_bucket(
+                "dishes_image_files",
+                destination_file,
+                img_file.filename,
+            )
         data["img_url"] = url
     # If both img_url and img_file are provided, use img_url (do nothing)
     # If only img_url is provided, use it (do nothing)

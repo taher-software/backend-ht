@@ -1,5 +1,30 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import date, datetime
+
+
+class MenuOut(BaseModel):
+    id: int
+    dishes_id: int
+    meal_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MealWithMenus(BaseModel):
+    id: int
+    meal_type: str
+    namespace_id: int
+    meal_date: date
+    created_at: datetime
+    updated_at: datetime
+    menus: list[MenuOut] = []
+
+    class Config:
+        from_attributes = True
 
 
 class MealOut(BaseModel):
@@ -7,7 +32,6 @@ class MealOut(BaseModel):
     meal_type: str
     namespace_id: int
     meal_date: str
-    # Add other fields as needed
 
 
 class QueuedTask(BaseModel):

@@ -8,8 +8,7 @@ from src.app.db.models import DailyRestaurantSurvey
 from src.app.db.models import DailyRoomSatisfactionSurvey
 from src.app.db.models import Stay
 from src.app.db.models import RoomReceptionSurvey
-from src.app.db.models import Users
-from datetime import datetime, date, timedelta, time
+from datetime import datetime,time
 from zoneinfo import ZoneInfo
 from src.app.globals.schema_models import UsersModel
 from src.app.globals.schema_models import NamespaceModel
@@ -32,12 +31,11 @@ from src.app.resourcesController import (
     namespace_controller,
 )
 from src.app.globals.decorators import transactional
-import tempfile
-import os
 from src.app.routers.users.services import upload_user_avatar
 import logging
 from .templates import domain_template
 import json
+from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +74,7 @@ def count_current_survey(db, namespace_id, phone_number):
         .first()
     )
     if not settings:
-        raise ValueError(f"NamespaceSettings not found for the given {namespace_id}.")
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f"NamespaceSettings not found for the given {namespace_id}.")
 
     restaurant_survey_time = settings.restaurant_survey_time
     room_survey_time = settings.room_survey_time
@@ -84,7 +82,7 @@ def count_current_survey(db, namespace_id, phone_number):
     # Get timezone for the namespace
     ns = db.query(Namespace.timezone).filter(Namespace.id == namespace_id).first()
     if not ns or not ns[0]:
-        raise ValueError(f"Namespace timezone not found for the given {namespace_id}.")
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f"Namespace timezone not found for the given {namespace_id}.")
     namespace_tz = ns[0]
 
     tz = ZoneInfo(namespace_tz)

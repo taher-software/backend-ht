@@ -8,6 +8,7 @@ from fastapi import (
     Query,
 )
 from sqlalchemy.orm import Session
+from src.app.globals.response import ApiResponse
 from src.app.db.orm import get_db
 from src.app.globals.authentication import CurrentUserIdentifier
 from .modelsIn import DishesIn, DishesUpdate
@@ -34,7 +35,7 @@ def create_dish(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to create dishes."
         )
@@ -54,14 +55,14 @@ def list_dishes(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to list dishes."
         )
     return services.list_dishes(db, current_user, page, limit)
 
 
-@router.get("/{dish_id}", response_model=DishesOut)
+@router.get("/{dish_id}", response_model=ApiResponse)
 def get_dish(
     dish_id: int,
     db: Session = Depends(get_db),
@@ -73,11 +74,11 @@ def get_dish(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to get dishes."
         )
-    return services.get_dish(dish_id)
+    return ApiResponse(data=services.get_dish(dish_id))
 
 
 @router.patch("/{dish_id}", response_model=DishesOut)
@@ -94,7 +95,7 @@ def patch_dish(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to update dishes."
         )
@@ -113,7 +114,7 @@ def delete_dish(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to delete dishes."
         )

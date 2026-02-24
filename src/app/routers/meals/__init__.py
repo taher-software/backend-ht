@@ -2,18 +2,18 @@ from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.orm import Session
 from src.app.db.orm import get_db
 from src.app.globals.authentication import CurrentUserIdentifier
-from .modelsIn import MealCreateIn
+from .modelsIn import MealCreateIn, MealUpdateIn, DeleteMealsBatchIn
 from . import services
 from src.app.globals.schema_models import Role
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.response import ApiResponse
-from .modelsOut import MenuReminderBatchResponse, QueuedTask, FailedNamespace
+from .modelsOut import MenuReminderBatchResponse, QueuedTask, FailedNamespace, MealWithMenus
 import logging
 from src.app.gcp import pubsub_publisher
 from src.app.globals.enum import JobType, MealEnum
 from src.app.globals.admin_notifications import send_batch_failure_summary
 from fastapi import status
-from .services import get_late_namespaces
+from .services import get_late_namespaces, get_upcoming_meals, get_meal_by_id, update_meal, delete_meal, delete_meals_batch
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def create_meal(
         Role.supervisor.value,
         Role.dining_supervisor.value,
     }
-    if current_user.get("role") not in allowed_roles:
+    if not set(current_user.get("role", [])) & allowed_roles:
         raise HTTPException(
             status_code=403, detail="You do not have permission to create meals."
         )
@@ -40,6 +40,122 @@ def create_meal(
     services.create_meal_with_menu(payload, current_user, db)
 
     return ApiResponse(data="Meal created successfully.")
+
+
+@router.get("/upcoming", response_model=ApiResponse)
+def all_upcoming_meals(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier("user")),
+):
+    """Retrieve all meals with their menus where meal_date >= today."""
+    allowed_roles = {
+        Role.owner.value,
+        Role.admin.value,
+        Role.supervisor.value,
+        Role.dining_supervisor.value,
+    }
+    if not set(current_user.get("role", [])) & allowed_roles:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to view meals."
+        )
+    meals = get_upcoming_meals(
+        namespace_id=current_user["namespace_id"],
+        db=db,
+    )
+    return ApiResponse(data=[MealWithMenus.model_validate(m).model_dump() for m in meals])
+
+
+@router.get("/{meal_id}", response_model=ApiResponse)
+def get_meal(
+    meal_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier("user")),
+):
+    """Retrieve a specific meal with its menus by ID."""
+    allowed_roles = {
+        Role.owner.value,
+        Role.admin.value,
+        Role.supervisor.value,
+        Role.dining_supervisor.value,
+    }
+    if not set(current_user.get("role", [])) & allowed_roles:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to view meals."
+        )
+    meal = get_meal_by_id(
+        meal_id=meal_id,
+        namespace_id=current_user["namespace_id"],
+        db=db,
+    )
+    return ApiResponse(data=MealWithMenus.model_validate(meal).model_dump())
+
+
+@router.patch("/{meal_id}", response_model=ApiResponse)
+def patch_meal(
+    meal_id: int,
+    payload: MealUpdateIn = Body(...),
+    current_user: dict = Depends(CurrentUserIdentifier("user")),
+):
+    """Update a specific meal and optionally replace its menus."""
+    allowed_roles = {
+        Role.owner.value,
+        Role.admin.value,
+        Role.supervisor.value,
+        Role.dining_supervisor.value,
+    }
+    if not set(current_user.get("role", [])) & allowed_roles:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to update meals."
+        )
+    meal = update_meal(
+        meal_id=meal_id,
+        namespace_id=current_user["namespace_id"],
+        payload=payload,
+    )
+    return ApiResponse(data=MealWithMenus.model_validate(meal).model_dump())
+
+
+@router.delete("/{meal_id}", response_model=ApiResponse)
+def remove_meal(
+    meal_id: int,
+    current_user: dict = Depends(CurrentUserIdentifier("user")),
+):
+    """Delete a specific meal by ID."""
+    allowed_roles = {
+        Role.owner.value,
+        Role.admin.value,
+        Role.supervisor.value,
+        Role.dining_supervisor.value,
+    }
+    if not set(current_user.get("role", [])) & allowed_roles:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to delete meals."
+        )
+    delete_meal(meal_id=meal_id, namespace_id=current_user["namespace_id"])
+    return ApiResponse(data="Meal deleted successfully.")
+
+
+@router.delete("/", response_model=ApiResponse)
+def remove_meals_batch(
+    payload: DeleteMealsBatchIn,
+    current_user: dict = Depends(CurrentUserIdentifier("user")),
+):
+    """Delete multiple meals by a list of IDs."""
+    allowed_roles = {
+        Role.owner.value,
+        Role.admin.value,
+        Role.supervisor.value,
+        Role.dining_supervisor.value,
+    }
+    if not set(current_user.get("role", [])) & allowed_roles:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to delete meals."
+        )
+    deleted_count = delete_meals_batch(
+        meal_ids=payload.meal_ids,
+        namespace_id=current_user["namespace_id"],
+    )
+    return ApiResponse(data={"deleted_count": deleted_count})
 
 
 @router.post("/send-breakfast-reminder", response_model=MenuReminderBatchResponse)

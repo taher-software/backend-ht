@@ -1,6 +1,7 @@
 .env
 .envprod
 alembic/
+./claude/
 docker-compose.yaml
 Dockerfile
 celerybeat-schedule.db

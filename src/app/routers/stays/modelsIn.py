@@ -26,7 +26,7 @@ class StayRegistry(BaseModel):
     @classmethod
     def parse_birth_date(cls, value: str) -> str:
         if value:
-            return datetime.strptime(value, "%Y/%m/%d").date()
+            return datetime.strptime(value, "%Y-%m-%d").date()
         return value
 
 

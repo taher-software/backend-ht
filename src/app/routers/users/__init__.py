@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from psycopg2 import IntegrityError
 from src.app.db.orm import get_db
 from src.app.db.models.users import Users
 from typing import Optional, List
@@ -49,12 +50,17 @@ def create_user(
     db_user["namespace_id"] = current_user["namespace_id"]
     if avatar:
         db_user["avatar_url"] = upload_user_avatar(avatar)
-    user_created = users_controller.create(db_user, db=db)
+    try:
+        user_created = users_controller.create(db_user, db=db)
+    except IntegrityError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with this phone number already exists.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return UserResponse(**user_created)
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}")
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -63,7 +69,7 @@ def get_user(
     check_user_scope(current_user, [Role.admin.value, Role.owner.value])
     check_user_exist(user_id)
     user = users_controller.find_by_id(user_id)
-    return UserResponse(**user)
+    return ApiResponse(data=UserResponse(**user).model_dump())
 
 
 @router.get("/", response_model=ApiResponse)

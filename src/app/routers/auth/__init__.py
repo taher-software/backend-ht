@@ -321,15 +321,16 @@ def me(
                 ).count()
             },
         }
-
+        
         user_data = {
             "fullname": f"{user.first_name} {user.last_name}",
             "company_name": namespace.hotel_name,
+            "namespace_id": namespace.id,
             "role": user.role,
             "avatar": user.avatar_url,
             "claims_stats": claims_stats,
             "phone_number": user.phone_number if user.phone_number else "",
-            "pref_language": user.pref_language if user.pref_language else None,
+            "pref_language": user.pref_language if user.pref_language else None
         }
-
+            
         return MeResponse(data=user_data)

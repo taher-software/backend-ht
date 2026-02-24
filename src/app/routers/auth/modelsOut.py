@@ -122,6 +122,7 @@ class EmployeeStats(BaseModel):
 
     fullname: str = Field(...)
     company_name: str = Field(...)
+    namespace_id: int = Field(...)
     role: list[str] = Field(...)
     avatar: str | None = None
     claims_stats: dict[str, ClaimStats] = Field(...)

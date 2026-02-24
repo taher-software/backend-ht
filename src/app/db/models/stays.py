@@ -28,6 +28,7 @@ class Stay(Base):
     )
 
     # Relationships
+    guest = relationship("Guest", back_populates="stays")
     room = relationship("Room", back_populates="stays")
     claims = relationship("Claim", back_populates="stay")
     chat_rooms = relationship("ChatRoom", back_populates="stay")

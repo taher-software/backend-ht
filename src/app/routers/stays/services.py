@@ -9,6 +9,7 @@ from src.app.globals.response import ApiResponse
 from fastapi import HTTPException, status
 from src.app.globals.decorators import transactional
 from sqlalchemy import and_
+from sqlalchemy.orm import selectinload
 from datetime import date
 from src.settings import client
 from functools import lru_cache
@@ -213,3 +214,25 @@ def delete_stays(stay_ids: list[int], namespace_id: int, db=None):
         stay_controller.delete(stay_id, commit=False, db=db)
 
     return len(stay_ids)
+
+
+def get_stay_with_guest(stay_id: int, namespace_id: int, db=None):
+    stay = (
+        db.query(Stay)
+        .options(selectinload(Stay.guest))
+        .filter(Stay.id == stay_id)
+        .first()
+    )
+    if not stay:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stay with id {stay_id} not found",
+        )
+    if stay.namespace_id != namespace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Stay does not belong to your namespace",
+        )
+    result = stay.to_dict()
+    result["guest"] = stay.guest.to_dict() if stay.guest else None
+    return result

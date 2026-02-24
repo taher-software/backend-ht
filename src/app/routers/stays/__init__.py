@@ -5,7 +5,7 @@ from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.schema_models import Role
 from src.app.db.orm import get_db
 from .modelsIn import StayRegistry, StayUpdate, StayOrm, DeleteStaysIn
-from .services import add_new_stay, update_stay, get_active_stays, delete_stays
+from .services import add_new_stay, update_stay, get_active_stays, delete_stays, get_stay_with_guest
 
 router = APIRouter(prefix="/stays", tags=["Stays"], responses={**validation_response})
 
@@ -23,7 +23,7 @@ def create_stay(
     if Role.guest_relations_supervisor.value not in current_user.get("role", []):
         raise HTTPException(
             status_code=403,
-            detail="Only guest relations supervisors can create stays.",
+            detail="Only users with guest relations supervisor roles can create stays.",
         )
     return add_new_stay(payload, current_user)
 
@@ -76,6 +76,21 @@ def list_active_stays(
     )
 
     return ApiResponse(data=[StayOrm(**stay) for stay in stays])
+
+
+@router.get("/{stay_id}")
+def get_stay(
+    stay_id: int,
+    db=Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """Get a specific stay with its associated guest."""
+    stay = get_stay_with_guest(
+        stay_id=stay_id,
+        namespace_id=current_user["namespace_id"],
+        db=db,
+    )
+    return ApiResponse(data=stay)
 
 
 @router.delete("/")
