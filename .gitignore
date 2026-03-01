@@ -2,3 +2,8 @@ alembic/
 alembic.ini
 *.md
 ./claude/
+*/__pycache__/*
+*__pycache__*
+*.pyc
+.env
+.envprod
