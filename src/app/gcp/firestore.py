@@ -84,18 +84,21 @@ class FirestoreClient:
             )
             raise
 
-    def create_document(self, collection_name: str, data: dict) -> str:
+    def create_document(
+        self, collection_name: str, data: dict, document_id: str = None
+    ) -> str:
         """
-        Create a new document with auto-generated ID in specified collection.
+        Create a new document in the specified collection.
 
         Collections are created implicitly if they don't exist (standard Firestore behavior).
 
         Args:
             collection_name: Name of the collection (e.g., "users", "orders")
             data: Dictionary containing document data
+            document_id: Optional document ID. Auto-generated if not provided.
 
         Returns:
-            str: Auto-generated document ID
+            str: Document ID (provided or auto-generated)
 
         Raises:
             ValueError: If collection_name or data is invalid
@@ -105,6 +108,7 @@ class FirestoreClient:
 
         Example:
             doc_id = client.create_document("users", {"name": "Alice", "age": 30})
+            doc_id = client.create_document("users", {"name": "Bob"}, document_id="bob-123")
         """
         # Validate inputs
         if not collection_name or not isinstance(collection_name, str):
@@ -119,11 +123,13 @@ class FirestoreClient:
         try:
             logger.info(f"Creating document in collection '{collection_name}'")
 
-            # Get collection reference
             collection_ref = self.client.collection(collection_name)
 
-            # Add document with auto-generated ID
-            _, doc_ref = collection_ref.add(data)
+            if document_id:
+                doc_ref = collection_ref.document(document_id)
+                doc_ref.set(data)
+            else:
+                _, doc_ref = collection_ref.add(data)
 
             logger.info(
                 f"Successfully created document with ID '{doc_ref.id}' "
