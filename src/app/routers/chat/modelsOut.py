@@ -142,8 +142,6 @@ class RoomOut(BaseModel):
     id: int
     namespace_id: int
     room_number: str
-    floor: str | None
-    room_type: str | None
 
     class Config:
         from_attributes = True
