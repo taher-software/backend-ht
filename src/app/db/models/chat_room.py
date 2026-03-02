@@ -11,7 +11,7 @@ class ChatRoom(Base):
     guest_id = Column(
         ForeignKey("guest.phone_number", ondelete="CASCADE"), nullable=False
     )
-    claim_id = Column(ForeignKey("claim.id", ondelete="CASCADE"), nullable=False)
+    claim_id = Column(ForeignKey("claim.id", ondelete="CASCADE"), nullable=False, unique=True)
     stay_id = Column(ForeignKey("stay.id", ondelete="CASCADE"), nullable=False)
     namespace_id = Column(
         ForeignKey("namespace.id", ondelete="CASCADE"), nullable=False

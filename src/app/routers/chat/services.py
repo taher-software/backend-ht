@@ -246,6 +246,11 @@ def handle_initialize_chat(claim_id: int, current_user: dict, db=None) -> dict:
     if claim_namespace_id != user_namespace_id:
         raise ApiException(status.HTTP_403_FORBIDDEN, namespace_mismatch_error)
 
+    # Return existing chat room if already associated with this claim
+    existing_room = chatRoom_controller.find_by_field("claim_id", claim_id)
+    if existing_room:
+        return {"chat_room": existing_room}
+
     # Extract guest associated with the claim
     guest_id = claim.get("guest_id") if isinstance(claim, dict) else claim.guest_id
     guest = guest_controller.find_by_id(guest_id)
