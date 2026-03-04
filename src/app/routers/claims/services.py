@@ -8,7 +8,7 @@ from src.app.resourcesController import (
 )
 from src.app.globals.notification import send_push_notification
 from src.app.globals.schema_models import role_categ_assoc, ClaimStatus
-from src.app.db.models import Users, Stay, Room
+from src.app.db.models import Users, Stay, Room, Guest
 from src.app.db.models.claims import Claim
 from src.app.gcp.gcs import storage_client
 from fastapi import UploadFile, HTTPException, status
@@ -21,6 +21,122 @@ from functools import lru_cache
 from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
 from datetime import datetime
 from typing import Literal
+import backoff
+import openai
+
+
+def _make_giveup_handler(agent: str, location: Literal["title", "body"]):
+    def _on_giveup(details):
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"[{agent}] Failed to generate notification {location} after {details['tries']} retries",
+        )
+    return _on_giveup
+
+
+@lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3, on_giveup=_make_giveup_handler("guest_claim_update", "title"))
+def define_guest_claim_update_title(language: str, claim_title: str, action: Literal["acknowledge", "resolve"]) -> str:
+    action_update = "acknowledged" if action == "acknowledge" else "resolved"
+    completion = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"You are an AI assistant. Generate a push notification title in {language} "
+                    f"for a hotel claim that was {action_update} by hotel staff.\n\n"
+                    f'Example: "🔔 Claim ({claim_title}) {action_update} by the hotel staff"'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Generate a notification title for claim '{claim_title}' ({action_update}) in {language}",
+            },
+        ],
+    )
+    return completion.choices[0].message.content
+
+
+@lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3, on_giveup=_make_giveup_handler("guest_claim_update", "body"))
+def define_guest_claim_update_body(language: str, claim_title: str, action: Literal["acknowledge", "resolve"]) -> str:
+    action_update = "acknowledged" if action == "acknowledge" else "resolved"
+    completion = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"You are an AI assistant. Generate a short push notification body in {language} "
+                    f"to inform a hotel guest that their claim has been {action_update} by hotel staff.\n\n"
+                    f"Instructions:\n"
+                    f"- Address the guest directly\n"
+                    f"- Mention the claim title\n"
+                    f"- Keep it to one sentence\n"
+                    f"- Return only the notification body text\n\n"
+                    f'Example: "Your claim \"{claim_title}\" has been {action_update} by our hotel staff. We appreciate your patience."'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Generate a notification body for claim '{claim_title}' ({action_update}) in {language}",
+            },
+        ],
+    )
+    return completion.choices[0].message.content
+
+
+@lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3, on_giveup=_make_giveup_handler("employee_claim_reject", "title"))
+def define_employee_claim_reject_title(language: str, claim_title: str, room_number: str | int) -> str:
+    completion = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"You are an AI assistant. Generate a short push notification title in {language} "
+                    f"to alert a hotel employee that a guest has rejected the resolution of their claim.\n\n"
+                    f'Example: "⚠️ Claim Resolution Rejected – Room {room_number}"'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Generate a notification title for claim '{claim_title}' from room {room_number} whose resolution was rejected by the guest, in {language}",
+            },
+        ],
+    )
+    return completion.choices[0].message.content
+
+
+@lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3, on_giveup=_make_giveup_handler("employee_claim_reject", "body"))
+def define_employee_claim_reject_body(language: str, claim_title: str, room_number: str | int) -> str:
+    completion = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"You are an AI assistant. Generate a short push notification body in {language} "
+                    f"to inform a hotel employee that the guest in room {room_number} has rejected "
+                    f"the resolution of their claim.\n\n"
+                    f"Instructions:\n"
+                    f"- Mention the room number\n"
+                    f"- Mention the claim title\n"
+                    f"- Keep it to one or two sentences\n"
+                    f"- Return only the notification body text\n\n"
+                    f'Example: "The guest in Room {room_number} has rejected the resolution of their claim \"{claim_title}\". Please follow up with the guest."'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Generate a notification body for claim '{claim_title}' from room {room_number} whose resolution was rejected by the guest, in {language}",
+            },
+        ],
+    )
+    return completion.choices[0].message.content
 
 
 @lru_cache
@@ -431,7 +547,51 @@ def update_claim_status(
 
     claim_controller.update(claim_id, payload, db=db, commit=False)
 
+    if action in ["acknowledge", "resolve"]:
+        guest = db.query(Guest).filter(Guest.phone_number == claim["guest_id"]).first()
+        if guest and guest.current_device_token:
+            language = guest.pref_language or claim["claim_language"]
+            notif_title = define_guest_claim_update_title(language, claim["claim_title"], action)
+            notif_body = define_guest_claim_update_body(language, claim["claim_title"], action)
+            send_push_notification(guest.current_device_token, notif_title, notif_body)
+
+    if action == "reject":
+        resolver = db.query(Users).filter(Users.id == claim["resolver_employee_id"]).first()
+        if resolver and resolver.current_device_token:
+            stay = db.query(Stay).options(selectinload(Stay.room)).filter(Stay.id == claim["stay_id"]).first()
+            room_number = stay.room.room_number if stay and stay.room else "N/A"
+            language = resolver.pref_language or claim["claim_language"]
+            notif_title = define_employee_claim_reject_title(language, claim["claim_title"], room_number)
+            notif_body = define_employee_claim_reject_body(language, claim["claim_title"], room_number)
+            send_push_notification(resolver.current_device_token, notif_title, notif_body)
+
     return "Claim updated successfully"
+
+
+@transactional
+def close_guest_claim(claim_id: int, current_guest: dict, db=None):
+    claim = claim_controller.find_by_id(claim_id)
+
+    if not claim:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Claim with id {claim_id} not found",
+        )
+
+    if claim["guest_id"] != current_guest["phone_number"]:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only the guest who created this claim can close it",
+        )
+
+    if claim["status"] != ClaimStatus.pending.value:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Claim can only be closed if it is in pending status",
+        )
+
+    claim_controller.update(claim_id, {"status": ClaimStatus.closed.value}, db=db, commit=False)
+    return "Claim closed successfully"
 
 
 def get_current_employee_claims(

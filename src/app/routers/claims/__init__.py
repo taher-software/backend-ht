@@ -25,6 +25,7 @@ from .services import (
     create_resume_claim,
     update_claim_status,
     get_current_employee_claims,
+    close_guest_claim,
 )
 from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
 from pathlib import Path
@@ -69,7 +70,6 @@ def create_claim(
     notif_body = add_guest_claims(
         payload, current_guest, img_files, voice_file, vid_file
     )
-    print(f"notif body: {notif_body}")
     return ApiResponse(data=notif_body)
 
 
@@ -247,6 +247,15 @@ def current_employee_claims(
             "page_size": page_size,
         }
     )
+
+
+@router.patch("/close/{claim_id}")
+def close_claim(
+    claim_id: int = pth(...),
+    current_guest: dict = Depends(CurrentUserIdentifier(who="guest")),
+) -> ApiResponse:
+    result = close_guest_claim(claim_id=claim_id, current_guest=current_guest)
+    return ApiResponse(data=result)
 
 
 @router.patch("/{action}/{id}")

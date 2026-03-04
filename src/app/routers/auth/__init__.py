@@ -45,7 +45,7 @@ from pydantic import EmailStr
 from src.app.routers.auth.services import send_otp, generate_otp
 from src.app.globals.error import dbError
 from src.app.secrets.jwt import sign_jwt
-from src.app.db.models import Stay, Claim, Users
+from src.app.db.models import Stay, Claim, Users, Meal
 from sqlalchemy import desc, func
 from datetime import datetime
 from src.app.globals.schema_models import ClaimStatus
@@ -60,6 +60,7 @@ from src.app.globals.utils import (
     lunch_eligible_plans,
     dinner_eligible_plans,
 )
+from src.app.globals.enum import MealEnum
 
 router = APIRouter(prefix="/auth", tags=["Auth"], responses={**validation_response})
 
@@ -217,6 +218,14 @@ def me(
             menu_count = 0
             if ns_settings:
                 now = datetime.now().time()
+                today = datetime.now().date()
+                today_meal_types = {
+                    meal.meal_type
+                    for meal in db.query(Meal).filter(
+                        Meal.namespace_id == current_stay.namespace_id,
+                        Meal.meal_date == today,
+                    ).all()
+                }
                 if (
                     (
                         (
@@ -225,6 +234,7 @@ def me(
                             <= ns_settings.breakfast_end_time
                         )
                         and (meal_plan in breakfast_eligible_plans)
+                        and (MealEnum.BREAKFAST in today_meal_types)
                     )
                     or (
                         (
@@ -233,6 +243,7 @@ def me(
                             <= ns_settings.lunch_end_time
                         )
                         and (meal_plan in lunch_eligible_plans)
+                        and (MealEnum.LUNCH in today_meal_types)
                     )
                     or (
                         (
@@ -241,6 +252,7 @@ def me(
                             <= ns_settings.dinner_end_time
                         )
                         and (meal_plan in dinner_eligible_plans)
+                        and (MealEnum.DINNER in today_meal_types)
                     )
                 ):
                     menu_count = 1
@@ -280,6 +292,7 @@ def me(
         def get_claim_stats(claims_query, status: ClaimStatus):
             filtered_claims = claims_query.filter(Claim.status == status).all()
             count = len(filtered_claims)
+
             if count == 0:
                 return {"count": 0, "avg_time": 0}
 
