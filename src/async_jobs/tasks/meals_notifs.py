@@ -10,7 +10,7 @@ from src.app.gcp import firestore_client
 from src.settings import client
 from datetime import datetime
 from sqlalchemy import and_
-from src.app.db.models import Stay
+from src.app.db.models import Stay, Meal
 from src.app.globals.utils import (
     breakfast_eligible_plans,
     lunch_eligible_plans,
@@ -100,6 +100,22 @@ def get_eligible_current_guest_for_given_meal_type(
         .all()
     )
     return [gid[0] for gid in guests_ids]
+
+
+def meal_exists_today_for_namespace(namespace_id: int, meal_type: MealEnum, db) -> bool:
+    today = datetime.today().date()
+    return (
+        db.query(Meal.id)
+        .filter(
+            and_(
+                Meal.namespace_id == namespace_id,
+                Meal.meal_type == meal_type,
+                Meal.meal_date == today,
+            )
+        )
+        .first()
+        is not None
+    )
 
 
 def create_meal_notif_body(guest_name: str, meal_type: MealEnum, language: str):
@@ -285,6 +301,12 @@ def send_notif_breakfast_menu_for_namespace(job_id: str, namespace_id: int):
             f"[Job {job_id}] Starting breakfast menu notification for namespace {namespace_id}"
         )
 
+        if not meal_exists_today_for_namespace(namespace_id, MealEnum.BREAKFAST, db):
+            logger.info(
+                f"[Job {job_id}] No breakfast meal found today for namespace {namespace_id}, skipping"
+            )
+            return {"namespace_id": namespace_id, "sent": 0, "guest_errors": 0, "total_guests": 0}
+
         # Get eligible guests for this namespace
         try:
             guests_ids = get_eligible_current_guest_for_given_meal_type(
@@ -398,6 +420,12 @@ def send_notif_lunch_menu_for_namespace(job_id: str, namespace_id: int):
             f"[Job {job_id}] Starting lunch menu notification for namespace {namespace_id}"
         )
 
+        if not meal_exists_today_for_namespace(namespace_id, MealEnum.LUNCH, db):
+            logger.info(
+                f"[Job {job_id}] No lunch meal found today for namespace {namespace_id}, skipping"
+            )
+            return {"namespace_id": namespace_id, "sent": 0, "guest_errors": 0, "total_guests": 0}
+
         # Get eligible guests for this namespace
         try:
             guests_ids = get_eligible_current_guest_for_given_meal_type(
@@ -510,6 +538,12 @@ def send_notif_dinner_menu_for_namespace(job_id: str, namespace_id: int):
         logger.info(
             f"[Job {job_id}] Starting dinner menu notification for namespace {namespace_id}"
         )
+
+        if not meal_exists_today_for_namespace(namespace_id, MealEnum.DINNER, db):
+            logger.info(
+                f"[Job {job_id}] No dinner meal found today for namespace {namespace_id}, skipping"
+            )
+            return {"namespace_id": namespace_id, "sent": 0, "guest_errors": 0, "total_guests": 0}
 
         # Get eligible guests for this namespace
         try:
