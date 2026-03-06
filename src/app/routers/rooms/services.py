@@ -131,6 +131,18 @@ def get_all_rooms(namespace_id: int):
     return grouped
 
 
+def get_all_areas(namespace_id: int) -> list[str]:
+    db = room_controller.db
+    rows = (
+        db.query(Room.area)
+        .filter(Room.namespace_id == namespace_id, Room.area.isnot(None))
+        .distinct()
+        .order_by(Room.area.asc())
+        .all()
+    )
+    return [row.area for row in rows]
+
+
 @transactional
 def delete_rooms(namespace_id: int, room_ids: list[int], db=None):
     for room_id in room_ids:
