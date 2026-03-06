@@ -53,6 +53,18 @@ class ClaimDetailsResponse(ApiResponse):
     data: ClaimDetails
 
 
+class GuestOut(BaseModel):
+    phone_number: str
+    first_name: str
+    last_name: str
+    avatar_url: str | None = None
+    nationality: str
+    country_of_residence: str
+
+    class Config:
+        from_attributes = True
+
+
 class RoomOut(BaseModel):
     id: int
     room_number: str
@@ -93,6 +105,7 @@ class ClaimWithRoom(BaseModel):
     created_at: datetime
     updated_at: datetime
     stay: StayWithRoom | None = None
+    guest: GuestOut | None = None
 
     class Config:
         from_attributes = True

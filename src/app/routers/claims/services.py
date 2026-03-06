@@ -606,7 +606,7 @@ def get_current_employee_claims(
 ):
     query = (
         db.query(Claim)
-        .options(selectinload(Claim.stay).selectinload(Stay.room))
+        .options(selectinload(Claim.stay).selectinload(Stay.room), selectinload(Claim.guest))
         .filter(Claim.namespace_id == current_user["namespace_id"])
     )
 

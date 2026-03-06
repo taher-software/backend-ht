@@ -59,6 +59,7 @@ class Claim(Base):
     )
     stay = relationship("Stay", back_populates="claims")
     chat_rooms = relationship("ChatRoom", back_populates="claim")
+    guest = relationship("Guest", back_populates="claims")
 
     def to_dict(self):
         return {

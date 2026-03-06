@@ -5,7 +5,7 @@ from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.generic_responses import validation_response
 from .modelsIn import CreateRoomsIn, UpdateRoomIn, DeleteRoomsIn
 from .modelsOut import RoomListItem
-from .services import create_rooms, update_room_number, get_all_rooms, delete_rooms
+from .services import create_rooms, update_room, get_all_rooms, delete_rooms
 
 router = APIRouter(prefix="/rooms", tags=["Rooms"], responses={**validation_response})
 
@@ -25,6 +25,8 @@ def create(
         namespace_id=current_user["namespace_id"],
         start_room_number=payload.start_room_number,
         number_of_rooms=payload.number_of_rooms,
+        floor=payload.floor,
+        area=payload.area,
     )
 
     return ApiResponse(data=[RoomListItem(**room) for room in rooms])
@@ -37,10 +39,12 @@ def update(
     db=Depends(get_db),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
-    """Update the room number of a specific room."""
-    updated_room = update_room_number(
+    """Update floor and/or area of a specific room."""
+    updated_room = update_room(
+        namespace_id=current_user["namespace_id"],
         room_id=room_id,
-        new_room_number=payload.new_room_number,
+        floor=payload.floor,
+        area=payload.area,
         db=db,
     )
 
@@ -52,9 +56,11 @@ def list_all(
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
     """List all rooms for the current user's namespace."""
-    rooms = get_all_rooms(namespace_id=current_user["namespace_id"])
+    grouped = get_all_rooms(namespace_id=current_user["namespace_id"])
 
-    return ApiResponse(data=[RoomListItem(**room) for room in rooms])
+    return ApiResponse(
+        data={area: [RoomListItem(**room) for room in rooms] for area, rooms in grouped.items()}
+    )
 
 
 @router.delete("/")
@@ -63,6 +69,6 @@ def delete(
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ) -> ApiResponse:
     """Delete a list of rooms by their IDs."""
-    deleted_count = delete_rooms(room_ids=payload.room_ids)
+    deleted_count = delete_rooms(namespace_id=current_user["namespace_id"], room_ids=payload.room_ids)
 
     return ApiResponse(data={"deleted_count": deleted_count})

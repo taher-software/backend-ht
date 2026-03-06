@@ -39,6 +39,7 @@ class Guest(Base):
     dishes_surveys = relationship("DishesSurvey", back_populates="guest")
     chat_rooms = relationship("ChatRoom", back_populates="guest")
     stays = relationship("Stay", back_populates="guest")
+    claims = relationship("Claim", back_populates="guest")
 
     def to_dict(self):
         return {

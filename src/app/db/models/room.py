@@ -11,6 +11,8 @@ class Room(Base):
         ForeignKey("namespace.id", ondelete="CASCADE"), nullable=False, index=True
     )
     room_number = Column(String(255), nullable=False, index=True)
+    area = Column(String(255), nullable=True, default="Main")
+    floor = Column(Integer, nullable=True)
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )

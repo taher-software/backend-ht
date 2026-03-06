@@ -31,7 +31,7 @@ def _check_role(current_user: dict):
 
 @router.post("/", response_model=ApiResponse)
 def create_housekeeper(
-    payload: HousekeeperCreateIn = Depends(),
+    payload: HousekeeperCreateIn,
     avatar: UploadFile = File(None),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ):
@@ -48,7 +48,7 @@ def create_housekeeper(
 @router.patch("/{housekeeper_id}", response_model=ApiResponse)
 def update_housekeeper(
     housekeeper_id: int,
-    payload: HousekeeperUpdateIn = Depends(),
+    payload: HousekeeperUpdateIn,
     avatar: UploadFile = File(None),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ):
