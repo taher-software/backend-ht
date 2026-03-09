@@ -5,14 +5,13 @@ from fastapi import (
     UploadFile,
     File,
     HTTPException,
-    Query,
 )
 from sqlalchemy.orm import Session
 from src.app.globals.response import ApiResponse
 from src.app.db.orm import get_db
 from src.app.globals.authentication import CurrentUserIdentifier
 from .modelsIn import DishesIn, DishesUpdate
-from .modelsOut import DishesOut, DishesListOut
+from .modelsOut import DishesOut
 from . import services
 from typing import List
 from src.app.globals.schema_models import Role
@@ -42,12 +41,10 @@ def create_dish(
     return services.create_dish(payload, db, img_file, current_user)
 
 
-@router.get("/", response_model=DishesListOut)
+@router.get("/", response_model=ApiResponse)
 def list_dishes(
     db: Session = Depends(get_db),
     current_user: dict = Depends(CurrentUserIdentifier("user")),
-    page: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
 ):
     allowed_roles = {
         Role.owner.value,
@@ -59,7 +56,8 @@ def list_dishes(
         raise HTTPException(
             status_code=403, detail="You do not have permission to list dishes."
         )
-    return services.list_dishes(db, current_user, page, limit)
+    result = services.list_dishes(db, current_user)
+    return ApiResponse(data=[DishesOut(**item) for item in result["items"]])
 
 
 @router.get("/{dish_id}", response_model=ApiResponse)

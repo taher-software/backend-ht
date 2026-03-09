@@ -1,5 +1,5 @@
 from src.app.db.orm import Base
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, String, Float
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from src.app.db.orm import get_utc_time
 
@@ -12,6 +12,8 @@ class DailyRoomSatisfactionSurvey(Base):
     guest_phone_number = Column(
         ForeignKey("guest.phone_number", ondelete="CASCADE"), index=True
     )
+    housekeeper_id = Column(ForeignKey("housekeepers.id", ondelete="SET NULL"), nullable=True, index=True)
+    room_id = Column(ForeignKey("room.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Survey Questions - changed to Float and made nullable
     Q1 = Column(Float, nullable=True)  # Removed index
@@ -34,6 +36,7 @@ class DailyRoomSatisfactionSurvey(Base):
     # Relationships
     namespace = relationship("Namespace", back_populates="daily_room_surveys")
     guest = relationship("Guest", back_populates="daily_room_surveys")
+    room = relationship("Room", back_populates="daily_room_surveys")
 
     def to_dict(self):
         return {

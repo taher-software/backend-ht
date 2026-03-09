@@ -27,6 +27,9 @@ class Room(Base):
     # Relationships
     namespace = relationship("Namespace", back_populates="rooms")
     stays = relationship("Stay", back_populates="room")
+    housekeeper_assignments = relationship("HousekeeperAssignment", back_populates="room")
+    room_reception_surveys = relationship("RoomReceptionSurvey", back_populates="room")
+    daily_room_surveys = relationship("DailyRoomSatisfactionSurvey", back_populates="room")
 
     def to_dict(self):
         return {

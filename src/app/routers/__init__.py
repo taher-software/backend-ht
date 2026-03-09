@@ -18,6 +18,7 @@ from .websocket import router as websocket_router
 from .websocket import guest_connections, user_connections
 from .guests import router as guests_router
 from .housekeepers import router as housekeepers_router
+from .assignments import router as assignments_router
 
 
 def add_routers(app: FastAPI):

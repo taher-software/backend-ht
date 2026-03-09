@@ -20,6 +20,7 @@ from src.app.db.models import (
     Meal,
     Menu,
     Housekeeper,
+    HousekeeperAssignment,
 )
 
 users_controller = dbController(Users)
@@ -42,3 +43,4 @@ message_controller = dbController(Message)
 meal_controller = dbController(Meal)
 menu_controller = dbController(Menu)
 housekeeper_controller = dbController(Housekeeper)
+housekeeper_assignment_controller = dbController(HousekeeperAssignment)

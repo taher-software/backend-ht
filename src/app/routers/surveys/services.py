@@ -44,6 +44,7 @@ from src.app.db.models.meals import Meal
 from src.app.db.models.menu import Menu
 from src.app.globals.enum import MealEnum
 from src.app.db.models.dishes_survey import DishesSurvey
+from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from .modelsIn import DishesSurveySubmitPayload
 
 questions_labels = {
@@ -408,6 +409,7 @@ def submit_survey(payload, current_guest, db: Session):
         )
 
     namespace_id = current_stay.namespace_id
+    room_id = current_stay.room_id
     responses = payload.responses
     survey_type = payload.survey_type
 
@@ -462,6 +464,7 @@ def submit_survey(payload, current_guest, db: Session):
         Q4=responses[3] if len(responses) > 3 else None,
     )
     if survey_type == Survey.ROOM_RECEPTION:
+        survey_data["room_id"] = room_id
         room_reception_survey_controller.create(survey_data, db, commit=False)
     elif survey_type == Survey.RESTAURANT:
         daily_restaurant_survey_controller.create(survey_data, db, commit=False)
@@ -476,6 +479,16 @@ def submit_survey(payload, current_guest, db: Session):
             )
             queue_root_cause_controller.create(queue_data, db, commit=False)
     elif survey_type == Survey.DAILY_ROOM:
+        assignment = (
+            db.query(HousekeeperAssignment)
+            .filter(
+                HousekeeperAssignment.room_id == room_id,
+                HousekeeperAssignment.date == today,
+            )
+            .first()
+        )
+        survey_data["housekeeper_id"] = assignment.housekeeper_id if assignment else None
+        survey_data["room_id"] = room_id
         daily_room_satisfaction_survey_controller.create(survey_data, db, commit=False)
     else:
         raise HTTPException(status_code=400, detail="Invalid survey type")

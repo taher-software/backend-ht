@@ -191,7 +191,7 @@ def get_active_stays(namespace_id: int, db=None):
                 Stay.end_date >= today,
             )
         )
-        .order_by(Stay.start_date)
+        .order_by(Stay.start_date.desc())
         .all()
     )
     return [stay.to_dict() for stay in stays]

@@ -6,7 +6,7 @@ from src.app.globals.generic_responses import validation_response
 from src.app.globals.schema_models import Role
 from .modelsIn import CreateRoomsIn, UpdateRoomIn, DeleteRoomsIn
 from .modelsOut import RoomListItem
-from .services import create_rooms, update_room, get_all_rooms, delete_rooms, get_all_areas
+from .services import create_rooms, update_room, get_all_rooms, delete_rooms, get_all_areas, get_rooms_by_area
 
 router = APIRouter(prefix="/rooms", tags=["Rooms"], responses={**validation_response})
 
@@ -80,6 +80,22 @@ def list_all(
     return ApiResponse(
         data=[RoomListItem(**room) for room in rooms] 
     )
+
+
+@router.get("/by_area")
+def list_by_area(
+    area: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    """List all rooms in the given area, grouped by floor."""
+    _check_role(current_user)
+    result = get_rooms_by_area(
+        namespace_id=current_user["namespace_id"],
+        area=area,
+        db=db,
+    )
+    return ApiResponse(data=result)
 
 
 @router.get("/areas")

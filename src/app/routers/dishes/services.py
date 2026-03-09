@@ -66,12 +66,9 @@ def create_dish(
     return dish
 
 
-def list_dishes(db: Session, current_user: dict, page: int = 0, limit: int = 10):
-    # Use dishes_controller to get all dishes for the user's namespace
+def list_dishes(db: Session, current_user: dict):
     namespace_id = current_user.get("namespace_id")
-    return dishes_controller.get_all(
-        namespace_id=namespace_id, limit=limit, offset=page * limit, total=True
-    )
+    return dishes_controller.get_all(namespace_id=namespace_id)
 
 
 def get_dish(dish_id: int):

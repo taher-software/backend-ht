@@ -124,11 +124,7 @@ def get_all_rooms(namespace_id: int):
         .order_by(Room.area.asc(), asc(cast(Room.room_number, Integer)))
         .all()
     )
-    grouped: dict[str, list] = {}
-    for room in rooms:
-        area_key = room.area or ""
-        grouped.setdefault(area_key, []).append(room.to_dict())
-    return grouped
+    return [room.to_dict() for room in rooms]
 
 
 def get_all_areas(namespace_id: int) -> list[str]:
@@ -141,6 +137,40 @@ def get_all_areas(namespace_id: int) -> list[str]:
         .all()
     )
     return [row.area for row in rows]
+
+
+def get_rooms_by_area(namespace_id: int, area: str, db) -> list[dict]:
+    area_exists = (
+        db.query(Room.area)
+        .filter(
+            Room.namespace_id == namespace_id,
+            func.lower(Room.area) == area.lower(),
+        )
+        .first()
+    )
+    if not area_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Area '{area}' not found in your namespace.",
+        )
+
+    rooms = (
+        db.query(Room)
+        .filter(
+            Room.namespace_id == namespace_id,
+            func.lower(Room.area) == area.lower(),
+        )
+        .order_by(Room.floor.asc(), asc(cast(Room.room_number, Integer)))
+        .all()
+    )
+
+    floors: dict[str, list] = {}
+    for room in rooms:
+        floor_label = f"Floor {room.floor}" if room.floor is not None else "Unassigned"
+        floors.setdefault(floor_label, [])
+        floors[floor_label].append({"id": room.id, "number": room.room_number})
+
+    return [{"floor": floor, "rooms": rooms} for floor, rooms in floors.items()]
 
 
 @transactional

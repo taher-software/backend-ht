@@ -21,6 +21,7 @@ class Housekeeper(Base):
     )
 
     namespace = relationship("Namespace", back_populates="housekeepers")
+    assignments = relationship("HousekeeperAssignment", back_populates="housekeeper")
 
     def to_dict(self):
         return {
