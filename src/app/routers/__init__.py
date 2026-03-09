@@ -40,3 +40,4 @@ def add_routers(app: FastAPI):
     app.include_router(websocket_router)
     app.include_router(guests_router)
     app.include_router(housekeepers_router)
+    app.include_router(assignments_router)

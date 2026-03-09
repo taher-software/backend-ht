@@ -36,7 +36,9 @@ def create_plan_endpoint(
     _check_role(current_user)
     create_plan(
         namespace_id=current_user["namespace_id"],
-        plan_date=payload.date,
+        plan_date=payload.plan_date,
         assignments=payload.assignments,
     )
     return ApiResponse(data="Plan created successfully.")
+
+
