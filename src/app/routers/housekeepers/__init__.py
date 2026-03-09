@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from app.db.orm import get_db
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.response import ApiResponse
@@ -34,6 +35,7 @@ def create_housekeeper(
     payload: HousekeeperCreateIn,
     avatar: UploadFile = File(None),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db = Depends(get_db),
 ):
     """Create a new housekeeper."""
     _check_role(current_user)
@@ -41,6 +43,7 @@ def create_housekeeper(
         namespace_id=current_user["namespace_id"],
         payload=payload,
         avatar=avatar,
+        db=db,
     )
     return ApiResponse(data=HousekeeperOut(**housekeeper).model_dump())
 
@@ -51,6 +54,7 @@ def update_housekeeper(
     payload: HousekeeperUpdateIn,
     avatar: UploadFile = File(None),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db = Depends(get_db),
 ):
     """Update a housekeeper's details."""
     _check_role(current_user)
@@ -59,6 +63,7 @@ def update_housekeeper(
         namespace_id=current_user["namespace_id"],
         payload=payload,
         avatar=avatar,
+        db=db,
     )
     return ApiResponse(data=HousekeeperOut(**housekeeper).model_dump())
 
