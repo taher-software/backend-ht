@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
-from app.db.orm import get_db
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from src.app.db.orm import get_db
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.response import ApiResponse
@@ -84,23 +84,16 @@ def delete_housekeeper(
 
 @router.get("/", response_model=ApiResponse)
 def list_housekeepers(
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ):
-    """List all housekeepers for the current namespace, paginated."""
+    """List all housekeepers for the current namespace."""
     _check_role(current_user)
-    result = services.get_all_housekeepers(
+    items = services.get_all_housekeepers(
         namespace_id=current_user["namespace_id"],
-        page=page,
-        limit=limit,
     )
-    return ApiResponse(data={
-        "total": result["total"],
-        "page": result["page"],
-        "limit": result["limit"],
-        "items": [HousekeeperOut(**h).model_dump() for h in result["items"]],
-    })
+    return ApiResponse(
+        data=[HousekeeperOut(**h).model_dump() for h in items]
+    )
 
 
 @router.delete("/", response_model=ApiResponse)

@@ -66,17 +66,14 @@ def delete_housekeeper(housekeeper_id: int, namespace_id: int):
     housekeeper_controller.delete(housekeeper_id, db=housekeeper_controller.db)
 
 
-def get_all_housekeepers(namespace_id: int, page: int, limit: int) -> dict:
+def get_all_housekeepers(namespace_id: int) -> list:
     db = housekeeper_controller.db
-    query = db.query(Housekeeper).filter(Housekeeper.namespace_id == namespace_id)
-    total = query.count()
-    items = query.offset((page - 1) * limit).limit(limit).all()
-    return {
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "items": [h.to_dict() for h in items],
-    }
+    items = (
+        db.query(Housekeeper)
+        .filter(Housekeeper.namespace_id == namespace_id)
+        .all()
+    )
+    return [h.to_dict() for h in items]
 
 
 @transactional

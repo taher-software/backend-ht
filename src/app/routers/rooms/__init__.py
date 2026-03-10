@@ -82,22 +82,6 @@ def list_all(
     )
 
 
-@router.get("/by_area")
-def list_by_area(
-    area: str,
-    db=Depends(get_db),
-    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
-) -> ApiResponse:
-    """List all rooms in the given area, grouped by floor."""
-    _check_role(current_user)
-    result = get_rooms_by_area(
-        namespace_id=current_user["namespace_id"],
-        area=area,
-        db=db,
-    )
-    return ApiResponse(data=result)
-
-
 @router.get("/areas")
 def list_areas(
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),

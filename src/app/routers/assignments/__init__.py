@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from src.app.db.orm import get_db
 from src.app.globals.response import ApiResponse
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.schema_models import Role
 from .modelsIn import CreatePlanIn
-from .services import create_plan
+from .services import create_plan, get_next_day_by_area, get_today_plan_by_area
 
 router = APIRouter(
     prefix="/assignments",
@@ -26,6 +27,36 @@ def _check_role(current_user: dict):
             status_code=403,
             detail="You do not have permission to manage assignments.",
         )
+
+
+@router.get("/next_day_by_area")
+def next_day_by_area(
+    area: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    _check_role(current_user)
+    result = get_next_day_by_area(
+        namespace_id=current_user["namespace_id"],
+        area=area,
+        db=db,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/today_plan_by_area")
+def today_plan_by_area(
+    area: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    _check_role(current_user)
+    result = get_today_plan_by_area(
+        namespace_id=current_user["namespace_id"],
+        area=area,
+        db=db,
+    )
+    return ApiResponse(data=result)
 
 
 @router.post("/plan")
