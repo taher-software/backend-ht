@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, UploadFile, File, status, Header, Query, Body
+from fastapi import APIRouter, Depends, UploadFile, File, status, Header, Query, Body, HTTPException
 from src.app.db.orm import get_db
 from .modelsIn import NamespaceRegistry, WebAppLogin
 from src.app.resourcesController import (
     users_controller,
     namespace_controller,
     guest_controller,
+    stay_controller,
+    room_controller,
 )
 from src.app.globals.emails import send_email
 from dotmap import DotMap
@@ -42,12 +44,12 @@ from src.app.globals.generic_responses import (
     db_error_response,
 )
 from pydantic import EmailStr
-from src.app.routers.auth.services import send_otp, generate_otp
+from src.app.routers.auth.services import send_otp, generate_otp, generate_security_code
 from src.app.globals.error import dbError
 from src.app.secrets.jwt import sign_jwt
-from src.app.db.models import Stay, Claim, Users, Meal
+from src.app.db.models import Stay, Claim, Users, Meal, Room
 from sqlalchemy import desc, func
-from datetime import datetime
+from datetime import datetime, date
 from src.app.globals.schema_models import ClaimStatus
 from src.app.globals.schema_models import role_categ_assoc
 from .services import detect_time_zone
@@ -143,26 +145,98 @@ def mobile_login(
     db=Depends(get_db),
 ) -> ApiResponse:
 
-    app_user = guest_controller.find_by_id(phone_number)
-    if not app_user:
-        app_user = users_controller.find_by_field("phone_number", phone_number)
+    guest = guest_controller.find_by_id(phone_number)
+    if guest:
+        new_user = False
+        new_device = False
+        guest_room_number = None
 
-        if not app_user:
-            raise ApiException(status.HTTP_404_NOT_FOUND, no_user_error)
         if push_token:
+            saved_token = guest["current_device_token"]
+            if not saved_token:
+                new_user = True
+                new_device = True
+            elif saved_token != push_token:
+                new_device = True
+
+            if new_device:
+                today = date.today()
+                current_stay = (
+                    db.query(Stay)
+                    .filter(
+                        Stay.guest_id == phone_number,
+                        Stay.start_date <= today,
+                        Stay.end_date >= today,
+                    )
+                    .order_by(desc(Stay.start_date))
+                    .first()
+                )
+                if current_stay:
+                    room = room_controller.find_by_id(current_stay.room_id)
+                    guest_room_number = room["room_number"] if room else None
+
+        return GuestLoginResponse(
+            data=GuestLogin(
+                token=sign_jwt(guest),
+                new_user=new_user,
+                new_device=new_device,
+                is_guest=True,
+                guest_room_number=guest_room_number,
+            )
+        )
+
+    app_user = users_controller.find_by_field("phone_number", phone_number)
+    if not app_user:
+        raise ApiException(status.HTTP_404_NOT_FOUND, no_user_error)
+
+    new_user = False
+    new_device = False
+
+    if push_token:
+        saved_token = app_user["current_device_token"]
+        if not saved_token:
+            new_user = True
+            users_controller.update(app_user["id"], dict(current_device_token=push_token), db=db)
+        elif saved_token != push_token:
+            new_device = True
             users_controller.update(
-                app_user["id"], dict(current_device_token=push_token), db=db
+                app_user["id"],
+                dict(security_code=generate_security_code()),
+                db=db,
             )
 
-        return GuestLoginResponse(data=GuestLogin(token=sign_jwt(app_user)))
-    if push_token:
-        guest_controller.update(
-            app_user["phone_number"],
-            dict(current_device_token=push_token),
-            resource_key="phone_number",
-            db=db,
+    return GuestLoginResponse(
+        data=GuestLogin(
+            token=sign_jwt(app_user),
+            new_user=new_user,
+            new_device=new_device,
         )
-    return GuestLoginResponse(data=GuestLogin(token=sign_jwt(app_user)))
+    )
+
+
+@router.get(
+    "/check_employee_code",
+    response_model=ApiResponse,
+    description="Validate employee security code and register new device",
+)
+def check_employee_code(
+    push_token: str = Query(...),
+    security_code: str = Query(..., pattern="^\d{4}$"),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    user = users_controller.find_by_id(current_user["id"])
+    if user["security_code"] != security_code:
+        raise HTTPException(
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
+            detail="invalid_security_code",
+        )
+    users_controller.update(
+        current_user["id"],
+        dict(current_device_token=push_token, security_code=None),
+        db=db,
+    )
+    return ApiResponse(data="New device saved successfully")
 
 
 @router.get("/get_otp", response_model=OtpResponse)

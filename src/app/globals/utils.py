@@ -8,6 +8,27 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
+LANG_MAP = {
+    "en": "English",
+    "fr": "French",
+    "es": "Spanish",
+    "de": "German",
+    "ar": "Arabic",
+    "ru": "Russian",
+    "zh": "Chinese",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "hi": "Hindi",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "tr": "Turkish",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "th": "Thai",
+    "fa": "Persian",
+    "bn": "Bengali",
+    "ur": "Urdu",
+}
 
 room_guest_satis_questions = [
     "How satisfied are you with the cleanliness of the floors, furniture, and bathroom?",

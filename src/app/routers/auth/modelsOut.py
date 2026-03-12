@@ -84,6 +84,10 @@ class AppUser(BaseModel):
 
 class GuestLogin(BaseModel):
     token: str = Field(...)
+    new_user: bool = Field(False)
+    new_device: bool = Field(False)
+    is_guest: bool = Field(False)
+    guest_room_number: str | None = Field(None)
 
 
 class GuestLoginResponse(ApiResponse):

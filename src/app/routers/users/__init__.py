@@ -46,7 +46,7 @@ def create_user(
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
 ):
     check_user_scope(current_user, [Role.admin.value, Role.owner.value])
-    db_user = {**user.dict(exclude={"password"})}
+    db_user = {**user.model_dump(exclude={"password"})}
     db_user["namespace_id"] = current_user["namespace_id"]
     if avatar:
         db_user["avatar_url"] = upload_user_avatar(avatar)
@@ -97,7 +97,7 @@ def update_user(
     )
     check_user_exist(user_id)
     # Only include fields that were actually provided
-    update_data = user.dict(exclude_unset=True, exclude={"password"})
+    update_data = user.model_dump(exclude_unset=True, exclude={"password"})
 
     # Handle password separately if it was provided
     if user.password:

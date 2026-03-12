@@ -48,6 +48,13 @@ class GcsInteraction:
         print(f"File {source_file_name} uploaded to {destination_blob_name}.")
         return f"https://storage.googleapis.com/{bucket_name}/{destination_blob_name}"
 
+    def delete_from_bucket(self, bucket_name, blob_name):
+        """Delete a blob from a GCS bucket"""
+        storage_client = self._initialize_gcp_storage_client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.delete()
+
     def download_from_bucket(self, bucket_name, blob_name, destination_file_name):
         """Download a file from GCS bucket to local filesystem"""
         storage_client = self._initialize_gcp_storage_client()

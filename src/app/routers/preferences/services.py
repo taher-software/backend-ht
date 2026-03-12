@@ -1,34 +1,9 @@
-# Service logic for preferences endpoints will go here
-
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from src.app.db.models.guest import Guest
 from src.app.db.models.users import Users
-
-LANG_MAP = {
-    "en": "English",
-    "fr": "French",
-    "es": "Spanish",
-    "de": "German",
-    "ar": "Arabic",
-    "ru": "Russian",
-    "zh": "Chinese",
-    "it": "Italian",
-    "pt": "Portuguese",
-    "hi": "Hindi",
-    "ja": "Japanese",
-    "ko": "Korean",
-    "ru": "Russian",
-    "tr": "Turkish",
-    "nl": "Dutch",
-    "pl": "Polish",
-    "th": "Thai",
-    "fa": "Persian",
-    "bn": "Bengali",
-    "ur": "Urdu",
-    # Add more as needed
-}
+from src.app.globals.utils import LANG_MAP
 
 
 def update_pref_language_service(current_user: dict, payload, db: Session):

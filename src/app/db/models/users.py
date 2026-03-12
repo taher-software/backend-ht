@@ -27,6 +27,7 @@ class Users(Base):
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )
     pref_language = Column(String(255), nullable=True)
+    security_code = Column(String(4), nullable=True)
     updated_at = Column(
         DateTime(timezone=False),
         index=True,

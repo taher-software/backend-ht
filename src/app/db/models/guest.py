@@ -9,14 +9,14 @@ from src.settings import settings
 class Guest(Base):
     __tablename__ = "guest"
     phone_number = Column(String(255), primary_key=True, index=True)
-    first_name = Column(String(255), nullable=False, index=True)
-    last_name = Column(String(255), nullable=False)
+    first_name = Column(String(255), nullable=True, index=True)
+    last_name = Column(String(255), nullable=True)
     birth_date = Column(DATE, nullable=True)
     avatar_url = Column(String(255), default=settings.default_profile)
     current_device_token = Column(String(255), nullable=True)
     pref_language = Column(String(255), nullable=True)
-    nationality = Column(String(255), nullable=False)
-    country_of_residence = Column(String(255), nullable=False)
+    nationality = Column(String(255), nullable=True)
+    country_of_residence = Column(String(255), nullable=True)
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )

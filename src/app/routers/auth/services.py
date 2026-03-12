@@ -45,6 +45,11 @@ def generate_otp():
     return random.randint(1000, 9999)
 
 
+def generate_security_code() -> str:
+    """Generates a 4-digit security code."""
+    return str(random.randint(1000, 9999))
+
+
 def send_otp(push_token: str):
     """Sends an OTP code to the given push token."""
 

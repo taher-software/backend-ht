@@ -6,7 +6,7 @@ from src.app.globals.generic_responses import validation_response
 from src.app.globals.schema_models import Role
 from .modelsIn import CreateRoomsIn, UpdateRoomIn, DeleteRoomsIn
 from .modelsOut import RoomListItem
-from .services import create_rooms, update_room, get_all_rooms, delete_rooms, get_all_areas, get_rooms_by_area
+from .services import create_rooms, update_room, get_all_rooms, delete_rooms, get_all_areas
 
 router = APIRouter(prefix="/rooms", tags=["Rooms"], responses={**validation_response})
 
