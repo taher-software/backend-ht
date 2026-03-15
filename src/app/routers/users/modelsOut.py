@@ -5,6 +5,7 @@ from src.app.routers.users.modelsIn import UserBase
 class UserResponse(UserBase):
     id: int | None = None
     namespace_id: int
+    security_code: str | None = None
 
     class Config:
         from_attributes = True

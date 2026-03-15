@@ -28,11 +28,11 @@ def get_guest(
 @router.patch("/full_profile", response_model=ApiResponse)
 def full_profile(
     payload: GuestFullProfileIn = Body(...),
+    phone_number: str = Query(...),
     avatar: UploadFile = File(None),
-    current_user: dict = Depends(CurrentUserIdentifier(who="guest")),
     db=Depends(get_db),
 ) -> ApiResponse:
-    update_guest_full_profile(payload, current_user, avatar, db)
+    update_guest_full_profile(payload, {"phone_number": phone_number}, avatar, db)
     return ApiResponse(data="Profile updated successfully")
 
 

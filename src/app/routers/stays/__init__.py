@@ -14,7 +14,7 @@ def _has_any_role(user_roles: list, allowed_roles: set) -> bool:
     return bool(set(user_roles) & allowed_roles)
 
 
-@router.post("/create")
+@router.post("/")
 def create_stay(
     payload: StayRegistry,
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),

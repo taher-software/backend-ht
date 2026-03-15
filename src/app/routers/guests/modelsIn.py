@@ -1,13 +1,13 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from datetime import datetime
+import json
 
 
 class GuestFullProfileIn(BaseModel):
     first_name: str
     last_name: str
     birth_date: Optional[str] = None
-    current_device_token: str
     pref_language: str
     nationality: Optional[str] = None
     country_of_residence: Optional[str] = None
@@ -18,3 +18,9 @@ class GuestFullProfileIn(BaseModel):
         if v is not None:
             return datetime.strptime(v, "%Y-%m-%d").date()
         return v
+    
+    @model_validator(mode="before")
+    def check_data(cls, values):
+        if isinstance(values, str):
+            values = json.loads(values)
+        return values

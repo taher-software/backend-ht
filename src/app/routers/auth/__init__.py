@@ -26,14 +26,16 @@ from src.app.routers.auth.modelsOut import (
     no_guest_response,
     hotel_exist_error,
     hotel_existe_response,
-    GuestLoginResponse,
-    GuestLogin,
+    UserMobileLoginResponse,
+    UserMobileLogin,
     AppUser,
     OtpResponse,
     OtpModel,
     MeResponse,
     StayModel,
     invalid_credentials_response,
+    GetTokenModel,
+    GetTokenResponse,
 )
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.authentication import domain_auth, CurrentUserIdentifier
@@ -121,7 +123,7 @@ def resend_email_confirmation(user_email: EmailStr = Query):
 
 @router.post(
     "/web_app_login",
-    response_model=GuestLoginResponse,
+    response_model=UserMobileLoginResponse,
     description="API for web app login with username and password",
     responses={**invalid_credentials_response},
 )
@@ -130,13 +132,13 @@ def web_app_login(
     db=Depends(get_db),
 ) -> ApiResponse:
     result = handle_web_app_login(payload.username, payload.password, db)
-    return GuestLoginResponse(data=GuestLogin(token=result["token"]))
+    return UserMobileLoginResponse(data=UserMobileLogin(token=result["token"]))
 
 
 @router.post(
     "/mobile_login",
     description="API for sign in guest to mobile app",
-    response_model=GuestLoginResponse,
+    response_model=UserMobileLoginResponse,
     responses={**no_guest_response},
 )
 def mobile_login(
@@ -175,9 +177,8 @@ def mobile_login(
                     room = room_controller.find_by_id(current_stay.room_id)
                     guest_room_number = room["room_number"] if room else None
 
-        return GuestLoginResponse(
-            data=GuestLogin(
-                token=sign_jwt(guest),
+        return UserMobileLoginResponse(
+            data=UserMobileLogin(
                 new_user=new_user,
                 new_device=new_device,
                 is_guest=True,
@@ -205,9 +206,8 @@ def mobile_login(
                 db=db,
             )
 
-    return GuestLoginResponse(
-        data=GuestLogin(
-            token=sign_jwt(app_user),
+    return UserMobileLoginResponse(
+        data=UserMobileLogin(
             new_user=new_user,
             new_device=new_device,
         )
@@ -220,19 +220,21 @@ def mobile_login(
     description="Validate employee security code and register new device",
 )
 def check_employee_code(
+    phone_number: str = Query(...),
     push_token: str = Query(...),
     security_code: str = Query(..., pattern="^\d{4}$"),
-    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
     db=Depends(get_db),
 ) -> ApiResponse:
-    user = users_controller.find_by_id(current_user["id"])
+    user = users_controller.find_by_field("phone_number", phone_number)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
     if user["security_code"] != security_code:
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
             detail="invalid_security_code",
         )
     users_controller.update(
-        current_user["id"],
+        user["id"],
         dict(current_device_token=push_token, security_code=None),
         db=db,
     )
@@ -240,10 +242,76 @@ def check_employee_code(
 
 
 @router.get("/get_otp", response_model=OtpResponse)
-def get_otp(current_user: dict = Depends(CurrentUserIdentifier(who="any"))):
-    push_token = current_user["current_device_token"]
+def get_otp(
+    is_guest: bool = Query(...),
+    phone_number: str = Query(...),
+    db=Depends(get_db),
+):
+    if is_guest:
+        resource = guest_controller.find_by_id(phone_number)
+    else:
+        resource = users_controller.find_by_field("phone_number", phone_number)
+
+    if not resource:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="resource_not_found")
+
+    push_token = resource["current_device_token"]
     otp = send_otp(push_token)
     return OtpResponse(data=OtpModel(otp=otp))
+
+
+@router.get("/get_token", response_model=GetTokenResponse)
+def get_token(
+    is_guest: bool = Query(...),
+    push_token: str = Query(...),
+    phone_number: str = Query(...),
+    new_device: bool = Query(...),
+    new_user: bool = Query(...),
+    db=Depends(get_db),
+):
+    if is_guest:
+        resource = guest_controller.find_by_id(phone_number)
+        if not resource:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="resource_not_found")
+
+        saved_token = resource["current_device_token"]
+
+        if new_user:
+            if saved_token is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="device_already_registered")
+            guest_controller.update(phone_number, dict(current_device_token=push_token), resource_key="phone_number", db=db)
+        else:
+            if new_device:
+                if saved_token is None:
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="no_device_registered_for_guest")
+                guest_controller.update(phone_number, dict(current_device_token=push_token), resource_key="phone_number", db=db)
+            else:
+                if push_token != saved_token:
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
+
+        resource = guest_controller.find_by_id(phone_number)
+    else:
+        resource = users_controller.find_by_field("phone_number", phone_number)
+        if not resource:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="resource_not_found")
+
+        saved_token = resource["current_device_token"]
+
+        if new_user:
+            if saved_token is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="device_already_registered")
+            users_controller.update(resource["id"], dict(current_device_token=push_token), db=db)
+        else:
+            if new_device:
+                if saved_token is None:
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="no_device_registered_for_user")
+                users_controller.update(resource["id"], dict(current_device_token=push_token), db=db)
+            else:
+                if push_token != saved_token:
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
+
+    token = sign_jwt(resource)
+    return GetTokenResponse(data=GetTokenModel(token=token))
 
 
 @router.get("/me", response_model=MeResponse)

@@ -82,16 +82,15 @@ class AppUser(BaseModel):
     devices: list | None = Field(None)
 
 
-class GuestLogin(BaseModel):
-    token: str = Field(...)
+class UserMobileLogin(BaseModel):
     new_user: bool = Field(False)
     new_device: bool = Field(False)
     is_guest: bool = Field(False)
     guest_room_number: str | None = Field(None)
 
 
-class GuestLoginResponse(ApiResponse):
-    data: GuestLogin
+class UserMobileLoginResponse(ApiResponse):
+    data: UserMobileLogin
 
 
 class OtpModel(BaseModel):
@@ -136,3 +135,11 @@ class EmployeeStats(BaseModel):
 
 class MeResponse(ApiResponse):
     data: EmployeeStats | StayModel
+
+
+class GetTokenModel(BaseModel):
+    token: str
+
+
+class GetTokenResponse(ApiResponse):
+    data: GetTokenModel
