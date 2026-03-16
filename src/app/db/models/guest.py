@@ -11,7 +11,6 @@ class Guest(Base):
     phone_number = Column(String(255), primary_key=True, index=True)
     first_name = Column(String(255), nullable=True, index=True)
     last_name = Column(String(255), nullable=True)
-    birth_date = Column(DATE, nullable=True)
     avatar_url = Column(String(255), default=settings.default_profile)
     current_device_token = Column(String(255), nullable=True)
     pref_language = Column(String(255), nullable=True)

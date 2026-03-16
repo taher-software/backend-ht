@@ -21,7 +21,6 @@ def update_guest_full_profile(payload, current_user: dict, avatar: UploadFile, d
         last_name=payload.last_name,
         current_device_token=payload.current_device_token,
         pref_language=lang_name,
-        birth_date=payload.birth_date,
         nationality=payload.nationality,
         country_of_residence=payload.country_of_residence,
     )
