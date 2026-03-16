@@ -132,7 +132,7 @@ def web_app_login(
     db=Depends(get_db),
 ) -> ApiResponse:
     result = handle_web_app_login(payload.username, payload.password, db)
-    return UserMobileLoginResponse(data=UserMobileLogin(token=result["token"]))
+    return ApiResponse(data=GetTokenModel(token=result["token"]))
 
 
 @router.post(
@@ -146,6 +146,9 @@ def mobile_login(
     push_token: str | None = Body(None),
     db=Depends(get_db),
 ) -> ApiResponse:
+
+    if not push_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="push_token_required")
 
     guest = guest_controller.find_by_id(phone_number)
     if guest:
