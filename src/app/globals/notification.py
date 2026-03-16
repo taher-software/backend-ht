@@ -5,6 +5,7 @@ import logging
 notif_type = dict(
     urgent=dict(channelId="urgent", sound="notif.wav"),
     message=dict(channelId="message", sound="message_notif.wav"),
+    claim=dict(channelId="new_claim", sound="claim_sound.wav"),
 )
 
 
@@ -12,7 +13,7 @@ def send_push_notification(
     expo_push_token,
     title,
     message,
-    notif_level: Literal["urgent", "message"] = "urgent",
+    notif_level: Literal["urgent", "message", "claim"] = "urgent",
 ):
     url = "https://api.expo.dev/v2/push/send?useFcmV1=true"
     headers = {
