@@ -123,7 +123,7 @@ def resend_email_confirmation(user_email: EmailStr = Query):
 
 @router.post(
     "/web_app_login",
-    response_model=UserMobileLoginResponse,
+    response_model=ApiResponse,
     description="API for web app login with username and password",
     responses={**invalid_credentials_response},
 )
@@ -132,7 +132,7 @@ def web_app_login(
     db=Depends(get_db),
 ) -> ApiResponse:
     result = handle_web_app_login(payload.username, payload.password, db)
-    return ApiResponse(data=GetTokenModel(token=result["token"]))
+    return ApiResponse(data=GetTokenModel(token=result["token"]).model_dump())
 
 
 @router.post(
