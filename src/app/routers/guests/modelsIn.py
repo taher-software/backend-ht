@@ -10,6 +10,7 @@ class GuestFullProfileIn(BaseModel):
     pref_language: str
     nationality: Optional[str] = None
     country_of_residence: Optional[str] = None
+    current_device_token: str = None
     
     @model_validator(mode="before")
     def check_data(cls, values):
