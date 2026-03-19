@@ -442,7 +442,7 @@ def add_guest_claims(
     # review the case with unknown type
     for emp in employees:
 
-        send_push_notification(emp.current_device_token, notif_title, notif_body,"new_claim")
+        send_push_notification(emp.current_device_token, notif_title, notif_body,"claim")
 
 
 @transactional

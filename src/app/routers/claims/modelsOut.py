@@ -58,8 +58,8 @@ class GuestOut(BaseModel):
     first_name: str
     last_name: str
     avatar_url: str | None = None
-    nationality: str
-    country_of_residence: str
+    nationality: str | None = None
+    country_of_residence: str | None = None
 
     class Config:
         from_attributes = True
@@ -68,7 +68,7 @@ class GuestOut(BaseModel):
 class RoomOut(BaseModel):
     id: int
     room_number: str
-    floor: str | None = None
+    floor: int | None = None
     room_type: str | None = None
 
     class Config:

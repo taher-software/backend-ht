@@ -34,7 +34,7 @@ from src.app.gcp.gcs import storage_client
 from src.app.db.models.claims import Claim
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.notification import send_push_notification
-from src.app.globals.schema_models import role_categ_assoc
+from src.app.globals.schema_models import role_categ_assoc, ClaimCategory
 from src.app.db.orm import get_db
 from src.app.db.models import Users, Stay
 from sqlalchemy import desc, and_, or_, any_
@@ -266,3 +266,10 @@ def update_claim(
 ) -> ApiResponse:
     result = update_claim_status(action=action, claim_id=id, current_user=current_user)
     return ApiResponse(data=result)
+
+
+@router.get("/categories")
+def get_claim_categories(
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+) -> ApiResponse:
+    return ApiResponse(data=[c.value for c in ClaimCategory])
