@@ -120,6 +120,7 @@ def housekeepers_performance(
     end_date: str | None = Query(None),
     housekeeper_id: str | None = Query(None),
     room_id: str | None = Query(None),
+    global_view: bool = Query(False, alias="global"),
     current_user: dict = Depends(CurrentUserIdentifier(who="user")),
     db=Depends(get_db),
 ) -> ApiResponse:
@@ -132,6 +133,7 @@ def housekeepers_performance(
         end_date=end_date,
         housekeeper_id=housekeeper_id,
         room_id=room_id,
+        global_view=global_view,
     )
     return ApiResponse(data=result)
 

@@ -6,6 +6,8 @@ from src.app.db.models.room_reception_survey import RoomReceptionSurvey
 from src.app.db.models.daily_restaurant_survey import DailyRestaurantSurvey
 from src.app.db.models.dishes_survey import DishesSurvey
 from src.app.db.models.claims import Claim
+from src.app.db.models.housekeepers import Housekeeper
+from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from src.app.globals.schema_models import ClaimCategory, ClaimStatus
 
 
@@ -116,8 +118,19 @@ def get_housekeepers_performance(
     end_date: str | None,
     housekeeper_id: str | None,
     room_id: str | None,
-) -> float | None:
+    global_view: bool = False,
+) -> float | None | list[dict]:
     date_from, date_to = resolve_date_range(start_date, end_date)
+
+    if not global_view:
+        return get_housekeepers_performance_details(
+            db=db,
+            namespace_id=namespace_id,
+            date_from=date_from,
+            date_to=date_to,
+            housekeeper_id=housekeeper_id,
+            room_id=room_id,
+        )
 
     filters = [
         DailyRoomSatisfactionSurvey.namespace_id == namespace_id,
@@ -168,6 +181,111 @@ def get_claims_handling_performance(
         "app.claims.unresolved": count_with([Claim.status.in_([ClaimStatus.pending.value, ClaimStatus.processing.value])]),
         "app.claims.rejected": count_with([Claim.status == ClaimStatus.rejected.value]),
     }
+
+
+def get_housekeepers_performance_details(
+    db: Session,
+    namespace_id: int,
+    date_from: datetime,
+    date_to: datetime,
+    housekeeper_id: str | None,
+    room_id: str | None,
+) -> list[dict]:
+    survey_filters = [
+        DailyRoomSatisfactionSurvey.namespace_id == namespace_id,
+        DailyRoomSatisfactionSurvey.created_at >= date_from,
+        DailyRoomSatisfactionSurvey.created_at <= date_to,
+    ]
+    if room_id is not None:
+        survey_filters.append(DailyRoomSatisfactionSurvey.room_id == room_id)
+    if housekeeper_id is not None:
+        survey_filters.append(
+            DailyRoomSatisfactionSurvey.housekeeper_id == housekeeper_id
+        )
+
+    scored_rows = (
+        db.query(
+            DailyRoomSatisfactionSurvey.housekeeper_id,
+            func.avg(DailyRoomSatisfactionSurvey.Q4),
+        )
+        .filter(and_(*survey_filters))
+        .group_by(DailyRoomSatisfactionSurvey.housekeeper_id)
+        .all()
+    )
+
+    result: list[dict] = []
+    scored_ids: set[int] = set()
+
+    for hk_id, avg_q4 in scored_rows:
+        if hk_id is None:
+            continue
+        hk = db.query(Housekeeper).filter(Housekeeper.id == hk_id).first()
+        if hk is None:
+            continue
+        scored_ids.add(hk_id)
+        result.append(
+            {
+                "id": hk.id,
+                "fullname": f"{hk.first_name} {hk.last_name}",
+                "photoUrl": hk.avatar_url,
+                "score": round(avg_q4, 2) if avg_q4 is not None else None,
+            }
+        )
+
+    if housekeeper_id is None:
+        assignment_filters = [
+            HousekeeperAssignment.namespace_id == namespace_id,
+            HousekeeperAssignment.date >= date_from.date(),
+            HousekeeperAssignment.date <= date_to.date(),
+        ]
+        if room_id is not None:
+            assignment_filters.append(
+                HousekeeperAssignment.room_id == room_id
+            )
+
+        assigned_rows = (
+            db.query(HousekeeperAssignment.housekeeper_id)
+            .filter(and_(*assignment_filters))
+            .distinct()
+            .all()
+        )
+        assigned_ids = {row[0] for row in assigned_rows}
+
+        not_scored_ids = assigned_ids - scored_ids
+        for hk_id in not_scored_ids:
+            hk = db.query(Housekeeper).filter(Housekeeper.id == hk_id).first()
+            if hk is None:
+                continue
+            result.append(
+                {
+                    "id": hk.id,
+                    "fullname": f"{hk.first_name} {hk.last_name}",
+                    "photoUrl": hk.avatar_url,
+                    "status": "not_scored",
+                }
+            )
+
+        all_hk_ids = {
+            row[0]
+            for row in db.query(Housekeeper.id)
+            .filter(Housekeeper.namespace_id == namespace_id)
+            .all()
+        }
+        absent_ids = all_hk_ids - scored_ids - not_scored_ids
+        for hk_id in absent_ids:
+            hk = db.query(Housekeeper).filter(Housekeeper.id == hk_id).first()
+            if hk is None:
+                continue
+            result.append(
+                {
+                    "id": hk.id,
+                    "fullname": f"{hk.first_name} {hk.last_name}",
+                    "photoUrl": hk.avatar_url,
+                    "status": "absent",
+                }
+            )
+
+    return result
 
 
 def get_kpi_stars_dishes(
