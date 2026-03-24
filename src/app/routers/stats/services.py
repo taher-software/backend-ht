@@ -294,25 +294,26 @@ def get_housekeepers_performance_details(
                 }
             )
 
-        all_hk_ids = {
-            row[0]
-            for row in db.query(Housekeeper.id)
-            .filter(Housekeeper.namespace_id == namespace_id)
-            .all()
-        }
-        absent_ids = all_hk_ids - scored_ids - not_scored_ids
-        for hk_id in absent_ids:
-            hk = db.query(Housekeeper).filter(Housekeeper.id == hk_id).first()
-            if hk is None:
-                continue
-            result.append(
-                {
-                    "id": hk.id,
-                    "fullname": f"{hk.first_name} {hk.last_name}",
-                    "photoUrl": hk.avatar_url,
-                    "status": "absent",
-                }
-            )
+        if room_id is None:
+            all_hk_ids = {
+                row[0]
+                for row in db.query(Housekeeper.id)
+                .filter(Housekeeper.namespace_id == namespace_id)
+                .all()
+            }
+            absent_ids = all_hk_ids - scored_ids - not_scored_ids
+            for hk_id in absent_ids:
+                hk = db.query(Housekeeper).filter(Housekeeper.id == hk_id).first()
+                if hk is None:
+                    continue
+                result.append(
+                    {
+                        "id": hk.id,
+                        "fullname": f"{hk.first_name} {hk.last_name}",
+                        "photoUrl": hk.avatar_url,
+                        "status": "absent",
+                    }
+                )
 
     return result
 
