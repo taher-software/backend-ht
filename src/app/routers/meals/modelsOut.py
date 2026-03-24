@@ -49,8 +49,8 @@ class FailedNamespace(BaseModel):
     error: str
 
 
-class MenuReminderBatchResponse(BaseModel):
-    """Response for batch meal reminder endpoints"""
+class ReminderBatchResponse(BaseModel):
+    """Generic response for batch reminder endpoints"""
 
     message: str
     total_namespaces: int

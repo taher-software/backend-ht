@@ -232,6 +232,35 @@ def get_housekeepers_performance_details(
             }
         )
 
+    if housekeeper_id is not None and not result:
+        # The housekeeper was not scored — check if they were assigned
+        # (not_scored) or had no assignment at all (absent).
+        single_hk_filters = [
+            HousekeeperAssignment.namespace_id == namespace_id,
+            HousekeeperAssignment.housekeeper_id == housekeeper_id,
+            HousekeeperAssignment.date >= date_from.date(),
+            HousekeeperAssignment.date <= date_to.date(),
+        ]
+        if room_id is not None:
+            single_hk_filters.append(HousekeeperAssignment.room_id == room_id)
+
+        was_assigned = (
+            db.query(HousekeeperAssignment)
+            .filter(and_(*single_hk_filters))
+            .first()
+        ) is not None
+
+        hk = db.query(Housekeeper).filter(Housekeeper.id == housekeeper_id).first()
+        if hk is not None:
+            result.append(
+                {
+                    "id": hk.id,
+                    "fullname": f"{hk.first_name} {hk.last_name}",
+                    "photoUrl": hk.avatar_url,
+                    "status": "not_scored" if was_assigned else "absent",
+                }
+            )
+
     if housekeeper_id is None:
         assignment_filters = [
             HousekeeperAssignment.namespace_id == namespace_id,

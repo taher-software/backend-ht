@@ -30,6 +30,8 @@ from src.async_jobs.tasks.add_meals_reminder import (
     send_notif_dinner_menu_reminder_for_namespace,
 )
 
+from src.async_jobs.tasks.assignment_reminder import send_notif_assignments_reminder_for_namespace       
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["Worker"], responses={**validation_response})
@@ -45,6 +47,7 @@ JOB_HANDLERS = {
     JobType.BREAKFAST_REMINDER: send_notif_breakfast_menu_reminder_for_namespace,
     JobType.LUNCH_REMINDER: send_notif_lunch_menu_reminder_for_namespace,
     JobType.DINNER_REMINDER: send_notif_dinner_menu_reminder_for_namespace,
+    JobType.ASSIGNMENT_REMINDER: send_notif_assignments_reminder_for_namespace
 }
 
 

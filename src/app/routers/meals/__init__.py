@@ -7,7 +7,7 @@ from . import services
 from src.app.globals.schema_models import Role
 from src.app.globals.generic_responses import validation_response
 from src.app.globals.response import ApiResponse
-from .modelsOut import MenuReminderBatchResponse, QueuedTask, FailedNamespace, MealWithMenus
+from .modelsOut import ReminderBatchResponse, QueuedTask, FailedNamespace, MealWithMenus
 import logging
 from src.app.gcp import pubsub_publisher
 from src.app.globals.enum import JobType, MealEnum
@@ -158,7 +158,7 @@ def remove_meals_batch(
     return ApiResponse(data={"deleted_count": deleted_count})
 
 
-@router.post("/send-breakfast-reminder", response_model=MenuReminderBatchResponse)
+@router.post("/send-breakfast-reminder", response_model=ReminderBatchResponse)
 def send_breakfast_reminder(db: Session = Depends(get_db)):
     """
     Publish breakfast menu reminder Pub/Sub jobs for all late namespaces.
@@ -181,7 +181,7 @@ def send_breakfast_reminder(db: Session = Depends(get_db)):
 
         if not namespaces_ids:
             logger.info("No namespaces need breakfast menu reminders")
-            return MenuReminderBatchResponse(
+            return ReminderBatchResponse(
                 message="No namespaces require breakfast menu reminders",
                 total_namespaces=0,
                 queued_tasks=[],
@@ -239,7 +239,7 @@ def send_breakfast_reminder(db: Session = Depends(get_db)):
                 )
 
         # Step 4: Return batch response
-        return MenuReminderBatchResponse(
+        return ReminderBatchResponse(
             message=f"Published {len(queued_tasks)} breakfast reminder jobs",
             total_namespaces=len(namespaces_ids),
             queued_tasks=queued_tasks,
@@ -259,7 +259,7 @@ def send_breakfast_reminder(db: Session = Depends(get_db)):
         )
 
 
-@router.post("/send-lunch-reminder", response_model=MenuReminderBatchResponse)
+@router.post("/send-lunch-reminder", response_model=ReminderBatchResponse)
 def send_lunch_reminder(db: Session = Depends(get_db)):
     """
     Publish lunch menu reminder Pub/Sub jobs for all late namespaces.
@@ -282,7 +282,7 @@ def send_lunch_reminder(db: Session = Depends(get_db)):
 
         if not namespaces_ids:
             logger.info("No namespaces need lunch menu reminders")
-            return MenuReminderBatchResponse(
+            return ReminderBatchResponse(
                 message="No namespaces require lunch menu reminders",
                 total_namespaces=0,
                 queued_tasks=[],
@@ -338,7 +338,7 @@ def send_lunch_reminder(db: Session = Depends(get_db)):
                 )
 
         # Step 4: Return batch response
-        return MenuReminderBatchResponse(
+        return ReminderBatchResponse(
             message=f"Published {len(queued_tasks)} lunch reminder jobs",
             total_namespaces=len(namespaces_ids),
             queued_tasks=queued_tasks,
@@ -357,7 +357,7 @@ def send_lunch_reminder(db: Session = Depends(get_db)):
         )
 
 
-@router.post("/send-dinner-reminder", response_model=MenuReminderBatchResponse)
+@router.post("/send-dinner-reminder", response_model=ReminderBatchResponse)
 def send_dinner_reminder(db: Session = Depends(get_db)):
     """
     Publish dinner menu reminder Pub/Sub jobs for all late namespaces.
@@ -380,7 +380,7 @@ def send_dinner_reminder(db: Session = Depends(get_db)):
 
         if not namespaces_ids:
             logger.info("No namespaces need dinner menu reminders")
-            return MenuReminderBatchResponse(
+            return ReminderBatchResponse(
                 message="No namespaces require dinner menu reminders",
                 total_namespaces=0,
                 queued_tasks=[],
@@ -438,7 +438,7 @@ def send_dinner_reminder(db: Session = Depends(get_db)):
                 )
 
         # Step 4: Return batch response
-        return MenuReminderBatchResponse(
+        return ReminderBatchResponse(
             message=f"Published {len(queued_tasks)} dinner reminder jobs",
             total_namespaces=len(namespaces_ids),
             queued_tasks=queued_tasks,

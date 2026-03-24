@@ -1,9 +1,11 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, cast, Integer, asc
 
 from src.app.globals.decorators import transactional
+from src.app.db.models.namespace import Namespace
 from src.app.db.models.room import Room
 from src.app.db.models.housekeepers import Housekeeper
 from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
@@ -173,3 +175,56 @@ def create_plan(
                 db=db,
                 commit=False,
             )
+
+
+def get_namespaces_require_reminder_for_housekeeper_schedule(db) -> list[int]:
+    """
+    Return IDs of namespaces that satisfy both conditions:
+
+    1. The current UTC time, converted to the namespace's local timezone,
+       is less than 6 hours after midday (12:00).  In other words, the
+       local time is between 12:00 and 18:00 — we only nag supervisors
+       during the afternoon window.
+
+    2. There are no HousekeeperAssignment records dated tomorrow for
+       that namespace, meaning the schedule has not been planned yet.
+
+    Args:
+        db: SQLAlchemy database session.
+
+    Returns:
+        List of namespace IDs that need a reminder.
+    """
+    tomorrow = date.today() + timedelta(days=1)
+    now_utc = datetime.now(ZoneInfo("UTC"))
+
+    # Pre-fetch tomorrow's scheduled namespace IDs in one query
+    scheduled_ns_ids = {
+        row.namespace_id
+        for row in db.query(HousekeeperAssignment.namespace_id)
+        .filter(HousekeeperAssignment.date == tomorrow)
+        .distinct()
+        .all()
+    }
+
+    results = []
+    for ns in db.query(Namespace).all():
+        # Skip namespaces that already have a plan for tomorrow
+        if ns.id in scheduled_ns_ids:
+            continue
+
+        # Convert current UTC time to the namespace's local timezone
+        try:
+            tz = ZoneInfo(ns.timezone)
+        except Exception:
+            continue
+
+        now_local = now_utc.astimezone(tz)
+        midday = now_local.replace(hour=12, minute=0, second=0, microsecond=0)
+
+        # Condition: local time is within 6 hours after midday
+        hours_since_midday = (now_local - midday).total_seconds() / 3600
+        if 0 <= hours_since_midday < 6:
+            results.append(ns.id)
+
+    return results

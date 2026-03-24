@@ -41,6 +41,9 @@ class JobType(str, Enum):
     LUNCH_REMINDER = "lunch_reminder"
     DINNER_REMINDER = "dinner_reminder"
 
+    # Assignment reminder tasks
+    ASSIGNMENT_REMINDER = "assignment_reminder"
+
 
 class CachingCollectionName(str, Enum):
     """Enum for Firestore collection names used in caching"""
@@ -63,6 +66,10 @@ class CachingCollectionName(str, Enum):
 
     # Chat room welcome messages
     CHAT_ROOM_WELCOME_MESSAGE: str = "chat_room_welcome_message"
+
+    # Assignment reminder notifications
+    ASSIGNMENTS_REMINDERS_NOTIF_TITLES: str = "assignments_reminders_notif_titles"
+    ASSIGNMENTS_REMINDERS_NOTIF_BODY: str = "assignments_reminders_notif_body"
 
     # Task deduplication (separate collections for each worker type)
     PROCESSED_PUBSUB_TASKS: str = "processed_pubsub_tasks"
