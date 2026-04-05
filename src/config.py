@@ -17,7 +17,10 @@ import logging
 
 
 def create_tables():
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logging.warning(f"Could not create tables on startup (will retry on first request): {e}")
 
 
 def start_app():
