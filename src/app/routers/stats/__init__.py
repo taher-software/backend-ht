@@ -4,6 +4,7 @@ from src.app.globals.response import ApiResponse
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.schema_models import Role, ClaimCategory
 from src.app.db.orm import get_db
+from typing import Literal
 from .services import (
     get_kpi_stars_rooms,
     get_kpi_stars_room_check_in,
@@ -11,6 +12,11 @@ from .services import (
     get_kpi_stars_dishes,
     get_housekeepers_performance,
     get_claims_handling_performance,
+    get_dishes_score,
+    get_queue_root_cause,
+    get_kpi_stars_rooms_range,
+    get_kpi_stars_room_check_in_range,
+    get_kpi_stars_restaurants_range,
 )
 
 ROOMS_STATS_ALLOWED_ROLES = {
@@ -152,5 +158,103 @@ def claims_handling_performance(
         start_date=start_date,
         end_date=end_date,
         claim_category=claim_category,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/dishes_score")
+def dishes_score(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    variant: Literal["best", "worst"] | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & RESTAURANTS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_dishes_score(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        variant=variant,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/queue_root_cause")
+def queue_root_cause(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & RESTAURANTS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_queue_root_cause(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/kpi_stars_rooms_range")
+def kpi_stars_rooms_range(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    room_id: str | None = Query(None),
+    housekeeper_id: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & ROOMS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_kpi_stars_rooms_range(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        room_id=room_id,
+        housekeeper_id=housekeeper_id,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/kpi_stars_room_check_in_range")
+def kpi_stars_room_check_in_range(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    room_id: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & CHECK_IN_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_kpi_stars_room_check_in_range(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        room_id=room_id,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/kpi_stars_restaurants_range")
+def kpi_stars_restaurants_range(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & RESTAURANTS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_kpi_stars_restaurants_range(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
     )
     return ApiResponse(data=result)

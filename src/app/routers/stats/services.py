@@ -8,6 +8,9 @@ from src.app.db.models.dishes_survey import DishesSurvey
 from src.app.db.models.claims import Claim
 from src.app.db.models.housekeepers import Housekeeper
 from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
+from src.app.db.models.dishes import Dishes
+from src.app.db.models.queue_root_cause import QueueRootCause
+from sqlalchemy import cast, Integer as SAInteger
 from src.app.globals.schema_models import ClaimCategory, ClaimStatus
 
 
@@ -339,3 +342,159 @@ def get_kpi_stars_dishes(
     )
 
     return {dish_id: round(avg, 2) if avg is not None else None for dish_id, avg in rows}
+
+
+def get_dishes_score(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    variant: str | None,
+) -> dict[str, float | None]:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    avg_score = func.avg(DishesSurvey.Q).label("avg_score")
+
+    query = (
+        db.query(DishesSurvey.dish_id, avg_score)
+        .filter(
+            and_(
+                DishesSurvey.namespace_id == namespace_id,
+                DishesSurvey.created_at >= date_from,
+                DishesSurvey.created_at <= date_to,
+            )
+        )
+        .group_by(DishesSurvey.dish_id)
+    )
+
+    if variant == "best":
+        query = query.order_by(avg_score.desc()).limit(3)
+    elif variant == "worst":
+        query = query.order_by(avg_score.asc()).limit(3)
+
+    rows = query.all()
+
+    dish_ids = [dish_id for dish_id, _ in rows]
+    dishes = db.query(Dishes.id, Dishes.name).filter(Dishes.id.in_(dish_ids)).all()
+    name_map = {d.id: d.name for d in dishes}
+
+    return {
+        name_map[dish_id]: round(avg, 2) if avg is not None else None
+        for dish_id, avg in rows
+        if dish_id in name_map
+    }
+
+
+def get_queue_root_cause(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+) -> list[int]:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    result = db.query(
+        func.sum(cast(QueueRootCause.r1, SAInteger)),
+        func.sum(cast(QueueRootCause.r2, SAInteger)),
+        func.sum(cast(QueueRootCause.r3, SAInteger)),
+    ).filter(
+        and_(
+            QueueRootCause.namespace_id == namespace_id,
+            QueueRootCause.created_at >= date_from,
+            QueueRootCause.created_at <= date_to,
+        )
+    ).one()
+
+    return [v if v is not None else 0 for v in result]
+
+
+def _build_range_result(row) -> list[list[float | None]]:
+    """Convert a (min_q1, max_q1, min_q2, max_q2, ...) row into [[min,max], ...]."""
+    return [
+        [
+            round(row[i], 2) if row[i] is not None else None,
+            round(row[i + 1], 2) if row[i + 1] is not None else None,
+        ]
+        for i in range(0, 8, 2)
+    ]
+
+
+def get_kpi_stars_rooms_range(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    room_id: str | None,
+    housekeeper_id: str | None,
+) -> list[list[float | None]]:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    filters = [
+        DailyRoomSatisfactionSurvey.namespace_id == namespace_id,
+        DailyRoomSatisfactionSurvey.created_at >= date_from,
+        DailyRoomSatisfactionSurvey.created_at <= date_to,
+    ]
+    if room_id is not None:
+        filters.append(DailyRoomSatisfactionSurvey.room_id == room_id)
+    if housekeeper_id is not None:
+        filters.append(DailyRoomSatisfactionSurvey.housekeeper_id == housekeeper_id)
+
+    row = db.query(
+        func.min(DailyRoomSatisfactionSurvey.Q1), func.max(DailyRoomSatisfactionSurvey.Q1),
+        func.min(DailyRoomSatisfactionSurvey.Q2), func.max(DailyRoomSatisfactionSurvey.Q2),
+        func.min(DailyRoomSatisfactionSurvey.Q3), func.max(DailyRoomSatisfactionSurvey.Q3),
+        func.min(DailyRoomSatisfactionSurvey.Q4), func.max(DailyRoomSatisfactionSurvey.Q4),
+    ).filter(and_(*filters)).one()
+
+    return _build_range_result(row)
+
+
+def get_kpi_stars_room_check_in_range(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    room_id: str | None,
+) -> list[list[float | None]]:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    filters = [
+        RoomReceptionSurvey.namespace_id == namespace_id,
+        RoomReceptionSurvey.created_at >= date_from,
+        RoomReceptionSurvey.created_at <= date_to,
+    ]
+    if room_id is not None:
+        filters.append(RoomReceptionSurvey.room_id == room_id)
+
+    row = db.query(
+        func.min(RoomReceptionSurvey.Q1), func.max(RoomReceptionSurvey.Q1),
+        func.min(RoomReceptionSurvey.Q2), func.max(RoomReceptionSurvey.Q2),
+        func.min(RoomReceptionSurvey.Q3), func.max(RoomReceptionSurvey.Q3),
+        func.min(RoomReceptionSurvey.Q4), func.max(RoomReceptionSurvey.Q4),
+    ).filter(and_(*filters)).one()
+
+    return _build_range_result(row)
+
+
+def get_kpi_stars_restaurants_range(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+) -> list[list[float | None]]:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    filters = [
+        DailyRestaurantSurvey.namespace_id == namespace_id,
+        DailyRestaurantSurvey.created_at >= date_from,
+        DailyRestaurantSurvey.created_at <= date_to,
+    ]
+
+    row = db.query(
+        func.min(DailyRestaurantSurvey.Q1), func.max(DailyRestaurantSurvey.Q1),
+        func.min(DailyRestaurantSurvey.Q2), func.max(DailyRestaurantSurvey.Q2),
+        func.min(DailyRestaurantSurvey.Q3), func.max(DailyRestaurantSurvey.Q3),
+        func.min(DailyRestaurantSurvey.Q4), func.max(DailyRestaurantSurvey.Q4),
+    ).filter(and_(*filters)).one()
+
+    return _build_range_result(row)
