@@ -6,6 +6,13 @@ terraform {
       
     }
   }
+   cloud {
+        organization = "bodor"
+
+        workspaces {
+            name = "backend-ht"
+        }
+  }
 }
 
 provider "google" {
