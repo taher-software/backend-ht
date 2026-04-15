@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_current_menu(db, current_guest):
+    today = date.today()
     # Get current stay
     current_stay = (
         db.query(Stay)
