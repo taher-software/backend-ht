@@ -1,2 +1,2 @@
-variables credentials {}
-variables project_id {}
+variable "credentials" {}
+variable "project_id" {}

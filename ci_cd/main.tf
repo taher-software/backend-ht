@@ -10,7 +10,7 @@ terraform {
 
 provider "google" {
   project = var.project_id
-  credentials = var.gcp_credentials
+  credentials = var.credentials
 }
 
 locals {
