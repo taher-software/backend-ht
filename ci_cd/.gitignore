@@ -1,0 +1,15 @@
+# Terraform state — contains plaintext secrets
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Terraform provider binaries and cache
+.terraform/providers/
+.terraform/
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

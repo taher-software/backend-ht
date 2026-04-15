@@ -6,3 +6,7 @@ docker-compose.yaml
 Dockerfile
 celerybeat-schedule.db
 *.md
+ci_cd/
+.git/
+.gitignore
+terraform/
