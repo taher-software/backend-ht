@@ -17,6 +17,13 @@ from .services import (
     get_kpi_stars_rooms_range,
     get_kpi_stars_room_check_in_range,
     get_kpi_stars_restaurants_range,
+    get_rooms_kpi_evolution,
+    get_restaurants_kpi_evolution,
+    get_claim_kpi_evolution,
+    get_claims_response_time_evolution,
+    get_rooms_check_in_kpi_evolution,
+    get_average_claims_response_time,
+    get_claims_per_category,
 )
 
 ROOMS_STATS_ALLOWED_ROLES = {
@@ -238,6 +245,136 @@ def kpi_stars_room_check_in_range(
         start_date=start_date,
         end_date=end_date,
         room_id=room_id,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/rooms_kpi_evolution")
+def rooms_kpi_evolution(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    room_id: str | None = Query(None),
+    housekeeper_id: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & ROOMS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_rooms_kpi_evolution(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        room_id=room_id,
+        housekeeper_id=housekeeper_id,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/rooms_check_in_kpi_evolution")
+def rooms_check_in_kpi_evolution(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    room_id: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & CHECK_IN_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_rooms_check_in_kpi_evolution(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        room_id=room_id,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/claims_per_category")
+def claims_per_category(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    result = get_claims_per_category(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/average_claims_response_time")
+def average_claims_response_time(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    claim_category: ClaimCategory | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    result = get_average_claims_response_time(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        claim_category=claim_category,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/claims_response_time_evolution")
+def claims_response_time_evolution(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    claim_category: ClaimCategory | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    result = get_claims_response_time_evolution(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        claim_category=claim_category,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/claim_kpi_evolution")
+def claim_kpi_evolution(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    claim_category: ClaimCategory | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    result = get_claim_kpi_evolution(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
+        claim_category=claim_category,
+    )
+    return ApiResponse(data=result)
+
+
+@router.get("/restaurants_kpi_evolution")
+def restaurants_kpi_evolution(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    current_user: dict = Depends(CurrentUserIdentifier(who="user")),
+    db=Depends(get_db),
+) -> ApiResponse:
+    if not set(current_user.get("role", [])) & RESTAURANTS_STATS_ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+    result = get_restaurants_kpi_evolution(
+        db=db,
+        namespace_id=current_user["namespace_id"],
+        start_date=start_date,
+        end_date=end_date,
     )
     return ApiResponse(data=result)
 

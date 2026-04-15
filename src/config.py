@@ -15,6 +15,11 @@ from src.settings import settings
 import json
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+
 
 def create_tables():
     try:

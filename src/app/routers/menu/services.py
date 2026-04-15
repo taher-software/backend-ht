@@ -1,10 +1,12 @@
 from src.app.db.models.stays import Stay
 from src.app.db.models.namespace_settings import NamespaceSettings
+from src.app.db.models.namespace import Namespace
 from src.app.db.models.meals import Meal
 from src.app.db.models.menu import Menu
 from src.app.db.models.dishes import Dishes
 from src.app.globals.enum import MealEnum
-from datetime import datetime, date
+from datetime import datetime, date, timezone as stdlib_timezone
+from pytz import timezone, UTC
 from fastapi import HTTPException
 from src.app.globals.utils import (
     breakfast_eligible_plans,
@@ -21,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_current_menu(db, current_guest):
-    today = date.today()
     # Get current stay
     current_stay = (
         db.query(Stay)
@@ -45,7 +46,11 @@ def get_current_menu(db, current_guest):
     )
     if not ns_settings:
         raise HTTPException(status_code=404, detail="Namespace settings not found")
-    now = datetime.now().time()
+    namespace = db.query(Namespace).filter(Namespace.id == namespace_id).first()
+    namespace_tz = timezone(namespace.timezone)
+    now_local = datetime.now(UTC).astimezone(namespace_tz)
+    now = now_local.time()
+    today = now_local.date()
 
     # Determine eligible meals by meal plan
     plan = current_stay.meal_plan

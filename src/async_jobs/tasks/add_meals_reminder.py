@@ -244,9 +244,6 @@ def send_menu_reminder_notif(
 
 def get_dining_managers(namespace_id, db):
     allowed_roles = [
-        Role.owner.value,
-        Role.admin.value,
-        Role.supervisor.value,
         Role.dining_supervisor.value,
     ]
     # Use OR with contains() for each role to check if array contains any allowed role

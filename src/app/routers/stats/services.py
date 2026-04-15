@@ -10,7 +10,7 @@ from src.app.db.models.housekeepers import Housekeeper
 from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from src.app.db.models.dishes import Dishes
 from src.app.db.models.queue_root_cause import QueueRootCause
-from sqlalchemy import cast, Integer as SAInteger
+from sqlalchemy import cast, Integer as SAInteger, extract
 from src.app.globals.schema_models import ClaimCategory, ClaimStatus
 
 
@@ -183,6 +183,225 @@ def get_claims_handling_performance(
         "app.claims.unclosed": count_with([Claim.status == ClaimStatus.resolved.value]),
         "app.claims.unresolved": count_with([Claim.status.in_([ClaimStatus.pending.value, ClaimStatus.processing.value])]),
         "app.claims.rejected": count_with([Claim.status == ClaimStatus.rejected.value]),
+    }
+
+
+def get_rooms_check_in_kpi_evolution(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    room_id: str | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    labels = []
+    q1_data, q2_data, q3_data, q4_data = [], [], [], []
+
+    current = date_from.date()
+    end = date_to.date()
+
+    while current <= end:
+        day_start = datetime.combine(current, datetime.min.time())
+        day_end = datetime.combine(current, datetime.max.time())
+
+        filters = [
+            RoomReceptionSurvey.namespace_id == namespace_id,
+            RoomReceptionSurvey.created_at >= day_start,
+            RoomReceptionSurvey.created_at <= day_end,
+        ]
+        if room_id is not None:
+            filters.append(RoomReceptionSurvey.room_id == room_id)
+
+        row = db.query(
+            func.avg(RoomReceptionSurvey.Q1),
+            func.avg(RoomReceptionSurvey.Q2),
+            func.avg(RoomReceptionSurvey.Q3),
+            func.avg(RoomReceptionSurvey.Q4),
+        ).filter(and_(*filters)).one()
+
+        labels.append(current.strftime("%d/%m/%Y"))
+        q1_data.append(round(row[0], 2) if row[0] is not None else None)
+        q2_data.append(round(row[1], 2) if row[1] is not None else None)
+        q3_data.append(round(row[2], 2) if row[2] is not None else None)
+        q4_data.append(round(row[3], 2) if row[3] is not None else None)
+
+        current += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "data": [
+            {"label": "app.rooms_checkIn.devices", "data": q1_data},
+            {"label": "app.rooms_checkIn.water", "data": q2_data},
+            {"label": "app.rooms_checkIn.refrigerator", "data": q3_data},
+            {"label": "app.rooms_checkIn.overall_cleanliness", "data": q4_data},
+        ],
+    }
+
+
+_CLAIM_CATEGORY_ORDER = [
+    ClaimCategory.Housekeeping,
+    ClaimCategory.Maintenance,
+    ClaimCategory.Guest_Relations,
+    ClaimCategory.Dining,
+    ClaimCategory.Unknown,
+]
+
+
+def get_claims_per_category(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    rows = (
+        db.query(Claim.claim_category, func.count(Claim.id))
+        .filter(
+            and_(
+                Claim.namespace_id == namespace_id,
+                Claim.created_at >= date_from,
+                Claim.created_at <= date_to,
+            )
+        )
+        .group_by(Claim.claim_category)
+        .all()
+    )
+
+    counts = {cat.value: 0 for cat in _CLAIM_CATEGORY_ORDER}
+    for category_value, count in rows:
+        if category_value in counts:
+            counts[category_value] = count
+
+    return {"claims_distribution": list(counts.values())}
+
+
+def get_average_claims_response_time(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    claim_category: ClaimCategory | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    filters = [
+        Claim.namespace_id == namespace_id,
+        Claim.created_at >= date_from,
+        Claim.created_at <= date_to,
+    ]
+    if claim_category is not None:
+        filters.append(Claim.claim_category == claim_category.value)
+
+    resolved_at = func.coalesce(Claim.resolve_claim_time, func.now())
+
+    avg_minutes = db.query(
+        func.avg(
+            extract("epoch", resolved_at - Claim.created_at) / 60
+        )
+    ).filter(and_(*filters)).scalar()
+
+    return {"response_time": round(avg_minutes, 2) if avg_minutes is not None else None}
+
+
+def get_claims_response_time_evolution(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    claim_category: ClaimCategory | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    labels = []
+    response_times = []
+
+    current = date_from.date()
+    end = date_to.date()
+
+    while current <= end:
+        day_start = datetime.combine(current, datetime.min.time())
+        day_end = datetime.combine(current, datetime.max.time())
+
+        filters = [
+            Claim.namespace_id == namespace_id,
+            Claim.created_at >= day_start,
+            Claim.created_at <= day_end,
+            Claim.resolve_claim_time.isnot(None),
+        ]
+        if claim_category is not None:
+            filters.append(Claim.claim_category == claim_category.value)
+
+        avg_minutes = db.query(
+            func.avg(
+                extract("epoch", Claim.resolve_claim_time - Claim.created_at) / 60
+            )
+        ).filter(and_(*filters)).scalar()
+
+        labels.append(current.strftime("%d/%m/%Y"))
+        response_times.append(round(avg_minutes, 2) if avg_minutes is not None else None)
+
+        current += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "data": [
+            {"label": "app.claims.response_time", "data": response_times},
+        ],
+    }
+
+
+def get_claim_kpi_evolution(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    claim_category: ClaimCategory | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    labels = []
+    received, resolved, unclosed, unresolved, rejected = [], [], [], [], []
+
+    resolved_statuses = [ClaimStatus.resolved.value, ClaimStatus.closed.value, ClaimStatus.rejected.value]
+
+    current = date_from.date()
+    end = date_to.date()
+
+    while current <= end:
+        day_start = datetime.combine(current, datetime.min.time())
+        day_end = datetime.combine(current, datetime.max.time())
+
+        base_filters = [
+            Claim.namespace_id == namespace_id,
+            Claim.created_at >= day_start,
+            Claim.created_at <= day_end,
+        ]
+        if claim_category is not None:
+            base_filters.append(Claim.claim_category == claim_category.value)
+
+        def count_with(extra_filters: list) -> int:
+            return db.query(func.count(Claim.id)).filter(and_(*base_filters, *extra_filters)).scalar() or 0
+
+        labels.append(current.strftime("%d/%m/%Y"))
+        received.append(count_with([]))
+        resolved.append(count_with([Claim.status.in_(resolved_statuses)]))
+        unclosed.append(count_with([Claim.status == ClaimStatus.resolved.value]))
+        unresolved.append(count_with([Claim.status.in_([ClaimStatus.pending.value, ClaimStatus.processing.value])]))
+        rejected.append(count_with([Claim.status == ClaimStatus.rejected.value]))
+
+        current += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "data": [
+            {"label": "app.claims.received", "data": received},
+            {"label": "app.claims.resolved", "data": resolved},
+            {"label": "app.claims.unclosed", "data": unclosed},
+            {"label": "app.claims.unresolved", "data": unresolved},
+            {"label": "app.claims.rejected", "data": rejected},
+        ],
     }
 
 
@@ -474,6 +693,109 @@ def get_kpi_stars_room_check_in_range(
     ).filter(and_(*filters)).one()
 
     return _build_range_result(row)
+
+
+def get_rooms_kpi_evolution(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+    room_id: str | None,
+    housekeeper_id: str | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    labels = []
+    q1_data, q2_data, q3_data, q4_data = [], [], [], []
+
+    current = date_from.date()
+    end = date_to.date()
+
+    while current <= end:
+        day_start = datetime.combine(current, datetime.min.time())
+        day_end = datetime.combine(current, datetime.max.time())
+
+        filters = [
+            DailyRoomSatisfactionSurvey.namespace_id == namespace_id,
+            DailyRoomSatisfactionSurvey.created_at >= day_start,
+            DailyRoomSatisfactionSurvey.created_at <= day_end,
+        ]
+        if room_id is not None:
+            filters.append(DailyRoomSatisfactionSurvey.room_id == room_id)
+        if housekeeper_id is not None:
+            filters.append(DailyRoomSatisfactionSurvey.housekeeper_id == housekeeper_id)
+
+        row = db.query(
+            func.avg(DailyRoomSatisfactionSurvey.Q1),
+            func.avg(DailyRoomSatisfactionSurvey.Q2),
+            func.avg(DailyRoomSatisfactionSurvey.Q3),
+            func.avg(DailyRoomSatisfactionSurvey.Q4),
+        ).filter(and_(*filters)).one()
+
+        labels.append(current.strftime("%d/%m/%Y"))
+        q1_data.append(round(row[0], 2) if row[0] is not None else None)
+        q2_data.append(round(row[1], 2) if row[1] is not None else None)
+        q3_data.append(round(row[2], 2) if row[2] is not None else None)
+        q4_data.append(round(row[3], 2) if row[3] is not None else None)
+
+        current += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "data": [
+            {"label": "app.daily_check.cleaning", "data": q1_data},
+            {"label": "app.daily_check.freshness", "data": q2_data},
+            {"label": "app.daily_check.dirt", "data": q3_data},
+            {"label": "app.daily_check.friendliness", "data": q4_data},
+        ],
+    }
+
+
+def get_restaurants_kpi_evolution(
+    db: Session,
+    namespace_id: int,
+    start_date: str | None,
+    end_date: str | None,
+) -> dict:
+    date_from, date_to = resolve_date_range(start_date, end_date)
+
+    labels = []
+    q1_data, q2_data, q3_data = [], [], []
+
+    current = date_from.date()
+    end = date_to.date()
+
+    while current <= end:
+        day_start = datetime.combine(current, datetime.min.time())
+        day_end = datetime.combine(current, datetime.max.time())
+
+        filters = [
+            DailyRestaurantSurvey.namespace_id == namespace_id,
+            DailyRestaurantSurvey.created_at >= day_start,
+            DailyRestaurantSurvey.created_at <= day_end,
+        ]
+
+        row = db.query(
+            func.avg(DailyRestaurantSurvey.Q1),
+            func.avg(DailyRestaurantSurvey.Q2),
+            func.avg(DailyRestaurantSurvey.Q3),
+        ).filter(and_(*filters)).one()
+
+        labels.append(current.strftime("%d/%m/%Y"))
+        q1_data.append(round(row[0], 2) if row[0] is not None else None)
+        q2_data.append(round(row[1], 2) if row[1] is not None else None)
+        q3_data.append(round(row[2], 2) if row[2] is not None else None)
+
+        current += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "data": [
+            {"label": "app.res.staff", "data": q1_data},
+            {"label": "app.res.area", "data": q2_data},
+            {"label": "app.res.food", "data": q3_data},
+        ],
+    }
 
 
 def get_kpi_stars_restaurants_range(
