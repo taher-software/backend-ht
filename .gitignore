@@ -1,6 +1,7 @@
 alembic/
 alembic.ini
 *.md
+!README.md
 ./claude/
 */__pycache__/*
 *__pycache__*

@@ -47,7 +47,7 @@ variable "jwt_secret" {
 
 variable "openia_apikey" {
     type = string
-    default = "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"
+    default = ""
 } 
 
 variable "super_admin_emails" {
