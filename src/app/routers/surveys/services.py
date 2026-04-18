@@ -147,8 +147,7 @@ def translate_list_of_data(language: str, data_label: str) -> list[str] | str:
             raw_output = raw_output.strip()
         return json.loads(raw_output)  # Convert JSON string to list
     except Exception as e:
-        print(f"Translation error for {data_label}: {e}")
-        print(f"Raw output: {raw_output}")
+        logger.error(f"Translation error for {data_label}: {e}")
         raise e
 
 
