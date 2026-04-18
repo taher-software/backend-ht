@@ -172,5 +172,6 @@ module "cloud_run" {
   max_instances     = each.value.max_instances
   allow_public = each.value.allow_public
   cloudsql_connection = each.value.cloud_sql_connection
+  openia_apikey = var.openia_apikey
 }
 
