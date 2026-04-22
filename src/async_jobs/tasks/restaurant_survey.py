@@ -303,7 +303,9 @@ def process_namespace_restaurant_surveys(
     ),
     on_giveup=send_admin_failure_notification_for_job,
 )
-def send_notif_restaurant_survey_for_namespace(namespace_id: int, job_id: str):
+def send_notif_restaurant_survey_for_namespace(
+    namespace_id: int, job_id: str, payload: dict = None, **kwargs,
+):
     """
     Send restaurant survey notifications for a specific namespace.
 

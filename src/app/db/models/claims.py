@@ -36,6 +36,9 @@ class Claim(Base):
     reject_claim_time = Column(DateTime, index=True, nullable=True)
     claim_language = Column(String(255), nullable=False)
     claim_category = Column(String(255), nullable=False)
+    criticality = Column(
+        String(255), nullable=False, server_default="medium", index=True
+    )
     namespace_id = Column(ForeignKey("namespace.id", ondelete="CASCADE"))
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time

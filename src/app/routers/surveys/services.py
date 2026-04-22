@@ -46,6 +46,8 @@ from src.app.globals.enum import MealEnum
 from src.app.db.models.dishes_survey import DishesSurvey
 from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from .modelsIn import DishesSurveySubmitPayload
+from src.app.globals.satisfaction import check_and_trigger_satisfaction_alert
+from src.app.resourcesController import settings_controller
 
 questions_labels = {
     "daily_room": room_guest_satis_questions,
@@ -457,6 +459,7 @@ def submit_survey(payload, current_guest, db: Session):
     survey_data = dict(
         namespace_id=namespace_id,
         guest_phone_number=phone_number,
+        stay_id=current_stay.id,
         Q1=responses[0] if len(responses) > 0 else None,
         Q2=responses[1] if len(responses) > 1 else None,
         Q3=responses[2] if len(responses) > 2 else None,
@@ -491,7 +494,68 @@ def submit_survey(payload, current_guest, db: Session):
         daily_room_satisfaction_survey_controller.create(survey_data, db, commit=False)
     else:
         raise HTTPException(status_code=400, detail="Invalid survey type")
+
+    # Apply satisfaction deduction and trigger alert if threshold is crossed
+    _apply_survey_deduction_and_alert(
+        db=db, stay=current_stay, survey_type=survey_type, responses=responses
+    )
+
     return ApiResponse(data="Survey submitted successfully.")
+
+
+def _compute_survey_deduction(
+    survey_type: Survey, responses: list, item_cote: float
+) -> float:
+    deduction = 0.0
+    if survey_type == Survey.DAILY_ROOM:
+        for val in responses[:4]:
+            if val < 2.5:
+                deduction += item_cote
+    elif survey_type == Survey.ROOM_RECEPTION:
+        for val in responses[:4]:
+            if val < 2.5:
+                deduction += 2 * item_cote
+    elif survey_type == Survey.RESTAURANT:
+        for i, val in enumerate(responses[:4]):
+            if i == 3:
+                if val == 1:
+                    deduction += item_cote
+            else:
+                if val < 2.5:
+                    deduction += item_cote
+    return deduction
+
+
+def _apply_survey_deduction_and_alert(
+    db: Session, stay: Stay, survey_type: Survey, responses: list
+) -> None:
+    deduction = _compute_survey_deduction(
+        survey_type, responses, stay.survey_item_cote or 0.0
+    )
+    if deduction <= 0:
+        return
+
+    old_score = stay.guest_satisfaction or 1.0
+    new_score = max(0.0, old_score - deduction)
+    stay.guest_satisfaction = new_score
+    db.add(stay)
+    db.flush()
+
+    ns_settings = settings_controller.find_by_field(
+        "namespace_id", stay.namespace_id
+    )
+    threshold = (
+        ns_settings.get("satisfaction_threshold", 0.5) if ns_settings else 0.5
+    )
+
+    check_and_trigger_satisfaction_alert(
+        old_score=old_score,
+        new_score=new_score,
+        threshold=threshold,
+        namespace_id=stay.namespace_id,
+        stay_id=stay.id,
+        guest_id=stay.guest_id,
+    )
 
 
 @lru_cache
@@ -541,6 +605,7 @@ def submit_dishes_survey(
         survey = DishesSurvey(
             namespace_id=namespace_id,
             guest_phone_number=guest_phone_number,
+            stay_id=stay.id,
             dish_id=dish_id,
             Q=score + 1,  # Assuming score is 0-4, convert to 1-5 scale
         )

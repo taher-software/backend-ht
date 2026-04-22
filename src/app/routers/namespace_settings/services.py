@@ -76,6 +76,9 @@ def _nested_to_flat(settings) -> dict:
         if "checkout_time" in cio:
             flat["check_out_time"] = cio["checkout_time"]
 
+    if "satisfaction_threshold" in data and data["satisfaction_threshold"] is not None:
+        flat["satisfaction_threshold"] = data["satisfaction_threshold"] / 100
+
     return flat
 
 
@@ -111,6 +114,11 @@ def _flat_to_nested(db_dict: dict) -> dict:
             "checkin_time": db_dict["check_in_time"],
             "checkout_time": db_dict["check_out_time"],
         },
+        "satisfaction_threshold": (
+            db_dict["satisfaction_threshold"] * 100
+            if db_dict.get("satisfaction_threshold") is not None
+            else None
+        ),
         "created_at": db_dict.get("created_at"),
         "updated_at": db_dict.get("updated_at"),
     }

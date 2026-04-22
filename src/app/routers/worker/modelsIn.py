@@ -13,6 +13,7 @@ class JobPayload(BaseModel):
     job_type: JobType
     namespace_id: int
     job_id: str
+    payload: dict = {}
 
 
 # ------------ Cloud Tasks HTTP Request Payload ------------

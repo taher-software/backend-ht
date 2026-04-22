@@ -1,5 +1,5 @@
 from src.app.db.orm import Base
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Time
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Time, Float
 from sqlalchemy.orm import relationship
 from src.app.db.orm import get_utc_time
 
@@ -28,6 +28,11 @@ class NamespaceSettings(Base):
     # Check in/out times
     check_in_time = Column(Time, index=True, nullable=False)
     check_out_time = Column(Time, index=True, nullable=False)
+
+    # Guest satisfaction threshold (stored 0-1, API 0-100)
+    satisfaction_threshold = Column(
+        Float, nullable=False, server_default="0.5"
+    )
 
     # Timestamps
     created_at = Column(

@@ -23,6 +23,19 @@ class MealEnum(str, Enum):
     DINNER: str = "dinner"
 
 
+class ClaimCriticality(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+CLAIM_DEDUCTIONS = {
+    ClaimCriticality.high: 0.25,
+    ClaimCriticality.medium: 0.125,
+    ClaimCriticality.low: 0.0625,
+}
+
+
 class JobType(str, Enum):
     """Enum for all available async job types in the system"""
 
@@ -43,6 +56,9 @@ class JobType(str, Enum):
 
     # Assignment reminder tasks
     ASSIGNMENT_REMINDER = "assignment_reminder"
+
+    # Guest satisfaction alerts
+    GUEST_SATISFACTION_ALERT = "guest_satisfaction_alert"
 
 
 class CachingCollectionName(str, Enum):

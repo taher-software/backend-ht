@@ -355,7 +355,9 @@ def process_namespace_meal_reminders(
     ),
     on_giveup=send_meal_reminder_failure_notification,
 )
-def send_notif_breakfast_menu_reminder_for_namespace(namespace_id: int, job_id: str):
+def send_notif_breakfast_menu_reminder_for_namespace(
+    namespace_id: int, job_id: str, payload: dict = None, **kwargs,
+):
     """
     Send breakfast menu reminders to dining managers of a specific namespace.
 
@@ -436,7 +438,9 @@ def send_notif_breakfast_menu_reminder_for_namespace(namespace_id: int, job_id: 
     ),
     on_giveup=send_meal_reminder_failure_notification,
 )
-def send_notif_lunch_menu_reminder_for_namespace(namespace_id: int, job_id: str):
+def send_notif_lunch_menu_reminder_for_namespace(
+    namespace_id: int, job_id: str, payload: dict = None, **kwargs,
+):
     """
     Send lunch menu reminders to dining managers of a specific namespace.
 
@@ -517,7 +521,9 @@ def send_notif_lunch_menu_reminder_for_namespace(namespace_id: int, job_id: str)
     ),
     on_giveup=send_meal_reminder_failure_notification,
 )
-def send_notif_dinner_menu_reminder_for_namespace(namespace_id: int, job_id: str):
+def send_notif_dinner_menu_reminder_for_namespace(
+    namespace_id: int, job_id: str, payload: dict = None, **kwargs,
+):
     """
     Send dinner menu reminders to dining managers of a specific namespace.
 

@@ -274,7 +274,9 @@ def send_guest_meal_notif(guest_id: int, meal_type: MealEnum, db=None):
     ),
     on_giveup=send_meal_notification_failure_notification,
 )
-def send_notif_breakfast_menu_for_namespace(job_id: str, namespace_id: int):
+def send_notif_breakfast_menu_for_namespace(
+    job_id: str, namespace_id: int, payload: dict = None, **kwargs,
+):
     """
     Send breakfast menu notifications to all eligible guests in a specific namespace.
 
@@ -393,7 +395,9 @@ def send_notif_breakfast_menu_for_namespace(job_id: str, namespace_id: int):
     ),
     on_giveup=send_meal_notification_failure_notification,
 )
-def send_notif_lunch_menu_for_namespace(job_id: str, namespace_id: int):
+def send_notif_lunch_menu_for_namespace(
+    job_id: str, namespace_id: int, payload: dict = None, **kwargs,
+):
     """
     Send lunch menu notifications to all eligible guests in a specific namespace.
 
@@ -512,7 +516,9 @@ def send_notif_lunch_menu_for_namespace(job_id: str, namespace_id: int):
     ),
     on_giveup=send_meal_notification_failure_notification,
 )
-def send_notif_dinner_menu_for_namespace(job_id: str, namespace_id: int):
+def send_notif_dinner_menu_for_namespace(
+    job_id: str, namespace_id: int, payload: dict = None, **kwargs,
+):
     """
     Send dinner menu notifications to all eligible guests in a specific namespace.
 

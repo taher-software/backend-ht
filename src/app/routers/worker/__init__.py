@@ -30,7 +30,8 @@ from src.async_jobs.tasks.add_meals_reminder import (
     send_notif_dinner_menu_reminder_for_namespace,
 )
 
-from src.async_jobs.tasks.assignment_reminder import send_notif_assignments_reminder_for_namespace       
+from src.async_jobs.tasks.assignment_reminder import send_notif_assignments_reminder_for_namespace
+from src.async_jobs.tasks.guest_satisfaction_alert import send_satisfaction_alert
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ JOB_HANDLERS = {
     JobType.BREAKFAST_REMINDER: send_notif_breakfast_menu_reminder_for_namespace,
     JobType.LUNCH_REMINDER: send_notif_lunch_menu_reminder_for_namespace,
     JobType.DINNER_REMINDER: send_notif_dinner_menu_reminder_for_namespace,
-    JobType.ASSIGNMENT_REMINDER: send_notif_assignments_reminder_for_namespace
+    JobType.ASSIGNMENT_REMINDER: send_notif_assignments_reminder_for_namespace,
+    JobType.GUEST_SATISFACTION_ALERT: send_satisfaction_alert,
 }
 
 
@@ -200,7 +202,11 @@ async def pubsub_entrypoint(pubsub_data: PubSubMessage):
             handler = JOB_HANDLERS.get(job.job_type)
             if not handler:
                 raise ValueError(f"Unknown job type: {job.job_type}")
-            result = handler(namespace_id=job.namespace_id, job_id=job.job_id)
+            result = handler(
+                namespace_id=job.namespace_id,
+                job_id=job.job_id,
+                payload=job.payload,
+            )
 
             logger.info(
                 f"[Job {job.job_id}] Completed: type={job.job_type}, namespace={job.namespace_id}"

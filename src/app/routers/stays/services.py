@@ -16,6 +16,7 @@ from functools import lru_cache
 import logging
 from src.app.gcp import cloud_task_manager
 from src.app.globals.enum import JobType
+from src.app.globals.satisfaction import compute_survey_item_cote
 
 
 @transactional
@@ -42,6 +43,10 @@ def add_new_stay(payload: StayRegistry, current_user: dict, db=None) -> ApiRespo
         end_date=payload.end_date,
         meal_plan=payload.meal_plan.value,
         room_id=payload.room_id,
+        guest_satisfaction=1.0,
+        survey_item_cote=compute_survey_item_cote(
+            payload.start_date, payload.end_date
+        ),
     )
     stay_controller.create(stay_payload, db=db, commit=False)
 

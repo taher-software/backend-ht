@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import time
 from typing import Optional
 
@@ -45,6 +45,16 @@ class SettingsBase(BaseModel):
     menu_schedule: MenuSchedule
     surveys: Optional[Surveys] = None
     check_in_out: CheckInOut
+    satisfaction_threshold: Optional[float] = None
+
+    @field_validator("satisfaction_threshold")
+    @classmethod
+    def _validate_satisfaction_threshold(cls, v):
+        if v is None:
+            return v
+        if not (0 < v <= 100):
+            raise ValueError("satisfaction_threshold must be in (0, 100]")
+        return v
 
 
 class SettingsCreate(SettingsBase):
@@ -56,3 +66,13 @@ class SettingsUpdate(BaseModel):
     menu_schedule: Optional[MenuSchedule] = None
     surveys: Optional[Surveys] = None
     check_in_out: Optional[CheckInOut] = None
+    satisfaction_threshold: Optional[float] = None
+
+    @field_validator("satisfaction_threshold")
+    @classmethod
+    def _validate_satisfaction_threshold(cls, v):
+        if v is None:
+            return v
+        if not (0 < v <= 100):
+            raise ValueError("satisfaction_threshold must be in (0, 100]")
+        return v

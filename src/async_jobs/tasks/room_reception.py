@@ -232,7 +232,8 @@ def send_admin_notification_on_final_failure(details: dict):
     on_giveup=send_admin_notification_on_final_failure,
 )
 def send_notif_room_reception_satisf_for_guest(
-    job_id: str, guest_id: str, namespace_id: int = None
+    job_id: str, guest_id: str, namespace_id: int = None,
+    payload: dict = None, **kwargs,
 ):
     """
     Send room reception survey notification to a specific guest.

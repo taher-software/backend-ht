@@ -1,5 +1,5 @@
 from src.app.db.orm import Base
-from sqlalchemy import Column, ForeignKey, DateTime, String, Integer, DATE
+from sqlalchemy import Column, ForeignKey, DateTime, String, Integer, DATE, Float
 from datetime import datetime
 from src.app.db.orm import get_utc_time
 from sqlalchemy.orm import relationship
@@ -16,6 +16,10 @@ class Stay(Base):
     room_id = Column(
         ForeignKey("room.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    guest_satisfaction = Column(
+        Float, nullable=False, server_default="1.0", index=True
+    )
+    survey_item_cote = Column(Float, nullable=False, server_default="0.0")
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
     )
@@ -32,6 +36,16 @@ class Stay(Base):
     room = relationship("Room", back_populates="stays")
     claims = relationship("Claim", back_populates="stay")
     chat_rooms = relationship("ChatRoom", back_populates="stay")
+    daily_restaurant_surveys = relationship(
+        "DailyRestaurantSurvey", back_populates="stay"
+    )
+    daily_room_surveys = relationship(
+        "DailyRoomSatisfactionSurvey", back_populates="stay"
+    )
+    room_reception_surveys = relationship(
+        "RoomReceptionSurvey", back_populates="stay"
+    )
+    dishes_surveys = relationship("DishesSurvey", back_populates="stay")
 
     def to_dict(self):
         return {

@@ -13,6 +13,9 @@ class DishesSurvey(Base):
         ForeignKey("guest.phone_number", ondelete="CASCADE"), index=True
     )
     dish_id = Column(ForeignKey("dishes.id", ondelete="CASCADE"), index=True)
+    stay_id = Column(
+        ForeignKey("stay.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     # Survey Question - required float field
     Q = Column(Float, nullable=False)
@@ -33,6 +36,7 @@ class DishesSurvey(Base):
     namespace = relationship("Namespace", back_populates="dishes_surveys")
     guest = relationship("Guest", back_populates="dishes_surveys")
     dish = relationship("Dishes", back_populates="surveys")
+    stay = relationship("Stay", back_populates="dishes_surveys")
 
     def to_dict(self):
         return {

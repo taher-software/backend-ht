@@ -175,7 +175,7 @@ def _on_backoff_namespace_warning(details):
     on_backoff=_on_backoff_namespace_warning,
 )
 def send_notif_assignments_reminder_for_namespace(
-    namespace_id: int, job_id: str
+    namespace_id: int, job_id: str, payload: dict = None, **kwargs,
 ) -> dict:
     """
     Send assignment reminder push notifications to all housekeeping

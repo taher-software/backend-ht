@@ -10,5 +10,6 @@ class SettingsResponse(BaseModel):
     menu_schedule: MenuSchedule
     surveys: Surveys
     check_in_out: CheckInOut
+    satisfaction_threshold: float | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

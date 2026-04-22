@@ -14,6 +14,9 @@ class DailyRoomSatisfactionSurvey(Base):
     )
     housekeeper_id = Column(ForeignKey("housekeepers.id", ondelete="SET NULL"), nullable=True, index=True)
     room_id = Column(ForeignKey("room.id", ondelete="SET NULL"), nullable=True, index=True)
+    stay_id = Column(
+        ForeignKey("stay.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     # Survey Questions - changed to Float and made nullable
     Q1 = Column(Float, nullable=True)  # Removed index
@@ -37,6 +40,7 @@ class DailyRoomSatisfactionSurvey(Base):
     namespace = relationship("Namespace", back_populates="daily_room_surveys")
     guest = relationship("Guest", back_populates="daily_room_surveys")
     room = relationship("Room", back_populates="daily_room_surveys")
+    stay = relationship("Stay", back_populates="daily_room_surveys")
 
     def to_dict(self):
         return {

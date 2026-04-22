@@ -8,6 +8,9 @@ from src.app.resourcesController import (
 )
 from src.app.globals.notification import send_push_notification
 from src.app.globals.schema_models import role_categ_assoc, ClaimStatus
+from src.app.globals.enum import ClaimCriticality, CLAIM_DEDUCTIONS
+from src.app.globals.satisfaction import check_and_trigger_satisfaction_alert
+from src.app.resourcesController import settings_controller
 from src.app.db.models import Users, Stay, Room, Guest
 from src.app.db.models.claims import Claim
 from src.app.gcp.gcs import storage_client
@@ -23,6 +26,9 @@ from datetime import datetime
 from typing import Literal
 import backoff
 import openai
+import logging
+
+logger_claim = logging.getLogger(__name__)
 
 
 def _make_giveup_handler(agent: str, location: Literal["title", "body"]):
@@ -272,6 +278,43 @@ def create_claim_title(claim_text: str, language: str):
 
 
 @lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3)
+def _classify_claim_criticality(title: str, text: str) -> ClaimCriticality:
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You classify hotel guest claims by criticality. "
+                        "Return exactly one word from this set: "
+                        "'high', 'medium', or 'low'. "
+                        "High = safety, health, or severe service failure. "
+                        "Medium = meaningful impact but not urgent. "
+                        "Low = minor inconvenience. Output only the word."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Title: {title or ''}\nText: {text or ''}"
+                    ),
+                },
+            ],
+        )
+        value = (completion.choices[0].message.content or "").strip().lower()
+        if value in {"high", "medium", "low"}:
+            return ClaimCriticality(value)
+        logger_claim.error(
+            f"Unexpected criticality value from LLM: {value!r}"
+        )
+    except Exception as e:
+        logger_claim.error(f"Failed to classify claim criticality: {e}")
+    return ClaimCriticality.medium
+
+
+@lru_cache
 def create_resume_claim(
     claim_text: str,
     voice_url: str,
@@ -398,6 +441,9 @@ def add_guest_claims(
     )
     claim_dict.update(dict(claim_title=claim_title))
 
+    criticality = _classify_claim_criticality(claim_title, claim_text)
+    claim_dict.update(dict(criticality=criticality.value))
+
     stay = (
         db.query(Stay)
         .options(selectinload(Stay.room))
@@ -410,6 +456,34 @@ def add_guest_claims(
     claim_dict.update(dict(stay_id=stay.id))
 
     claim_controller.create(claim_dict, commit=False, db=db)
+
+    # Apply satisfaction deduction; alert publication is deferred to the end
+    # of the function so it only fires after notifications have been sent.
+    pending_alert = None
+    deduction = CLAIM_DEDUCTIONS.get(criticality, 0.0)
+    if deduction > 0 and stay is not None:
+        old_score = stay.guest_satisfaction or 1.0
+        new_score = max(0.0, old_score - deduction)
+        stay.guest_satisfaction = new_score
+        db.add(stay)
+        db.flush()
+
+        ns_settings = settings_controller.find_by_field(
+            "namespace_id", stay.namespace_id
+        )
+        threshold = (
+            ns_settings.get("satisfaction_threshold", 0.5)
+            if ns_settings
+            else 0.5
+        )
+        pending_alert = {
+            "old_score": old_score,
+            "new_score": new_score,
+            "threshold": threshold,
+            "namespace_id": stay.namespace_id,
+            "stay_id": stay.id,
+            "guest_id": guest.phone_number,
+        }
 
     role = [key for key, vl in role_categ_assoc.items() if claim_category in vl]
 
@@ -443,6 +517,9 @@ def add_guest_claims(
     for emp in employees:
 
         send_push_notification(emp.current_device_token, notif_title, notif_body,"claim")
+
+    if pending_alert is not None:
+        check_and_trigger_satisfaction_alert(**pending_alert)
 
 
 @transactional
