@@ -39,7 +39,7 @@ from src.app.db.orm import get_db
 from src.app.db.models import Users, Stay
 from sqlalchemy import desc, and_, or_, any_
 from dotmap import DotMap
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.app.routers.claims.modelsOut import (
     ClaimGI,
     ClaimDetails,
@@ -51,7 +51,6 @@ from mutagen.mp3 import MP3
 from fastapi import Query
 from typing import Literal
 from src.app.globals.schema_models import ClaimStatus
-from sqlalchemy import func
 from src.app.globals.decorators import transactional
 from sqlalchemy.orm import selectinload
 
@@ -131,8 +130,15 @@ def get_claim_details(
         db.query(Claim)
         .options(selectinload(Claim.receiver))
         .options(selectinload(Claim.resolver))
+        .options(selectinload(Claim.stay).selectinload(Stay.room))
         .get(id)
     )
+
+    if claim is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Claim with id {id} not found",
+        )
 
     if "id" not in current_guest:
 
@@ -186,14 +192,14 @@ def get_claims_status_listing(
     db=Depends(get_db),
 ) -> ApiResponse:
 
-    today = datetime.now().date()
+    cutoff = datetime.now() - timedelta(hours=24)
     query = (
         db.query(Claim)
         .filter(
             and_(
                 Claim.status == status.value,
                 Claim.namespace_id == current_user["namespace_id"],
-                func.date(Claim.created_at) == today,
+                Claim.created_at >= cutoff,
             )
         )
         .order_by(desc(Claim.created_at))

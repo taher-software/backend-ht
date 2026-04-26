@@ -4,7 +4,8 @@ from src.app.globals.response import ApiResponse
 from src.app.globals.authentication import CurrentUserIdentifier
 from src.app.globals.schema_models import Role
 from src.app.db.orm import get_db
-from .modelsIn import StayRegistry, StayUpdate, StayOrm, DeleteStaysIn
+from .modelsIn import StayRegistry, StayUpdate, DeleteStaysIn
+from .modelsOut import StayOrm, StayOut
 from .services import add_new_stay, update_stay, get_active_stays, delete_stays, get_stay_with_guest
 
 router = APIRouter(prefix="/stays", tags=["Stays"], responses={**validation_response})

@@ -28,7 +28,7 @@ from functools import lru_cache
 from src.app.gcp import firestore_client, pubsub_publisher
 import backoff
 from src.app.globals.enum import CachingCollectionName
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func, desc
 from sqlalchemy.orm import selectinload
 from src.app.globals.decorators import transactional
@@ -386,6 +386,7 @@ def get_chat_rooms(current_user: dict, db) -> list:
     if is_user:
         # For users: list all active chat rooms where user is involved
         user_id = current_user.get("id")
+        cutoff = datetime.now() - timedelta(hours=24)
 
         chat_rooms = (
             db.query(ChatRoom)
@@ -399,7 +400,11 @@ def get_chat_rooms(current_user: dict, db) -> list:
                 selectinload(ChatRoom.user),
                 selectinload(ChatRoom.guest),
             )
-            .filter(ChatRoom.user_id == user_id, ChatRoom.active == True)
+            .filter(
+                ChatRoom.user_id == user_id,
+                ChatRoom.active == True,
+                ChatRoom.created_at >= cutoff,
+            )
             .order_by(desc(latest_message_subq.c.latest_message_at))
             .all()
         )

@@ -27,7 +27,8 @@ class ClaimCategory(str, Enum):
     Maintenance: str = "Maintenance"
     Guest_Relations: str = "Guest Relations"
     Dining: str = "Dining"
-    Unknown: str = "unknown"
+    Unknown: str = "Unknown"
+    Invalid: str = "Invalid"
 
 
 role_categ_assoc = {

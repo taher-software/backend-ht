@@ -7,7 +7,7 @@ from src.app.resourcesController import (
     chatRoom_controller,
 )
 from src.app.globals.notification import send_push_notification
-from src.app.globals.schema_models import role_categ_assoc, ClaimStatus
+from src.app.globals.schema_models import role_categ_assoc, ClaimStatus, ClaimCategory
 from src.app.globals.enum import ClaimCriticality, CLAIM_DEDUCTIONS
 from src.app.globals.satisfaction import check_and_trigger_satisfaction_alert
 from src.app.resourcesController import settings_controller
@@ -167,12 +167,19 @@ def define_category(claim_text: str) -> str:
         messages=[
             {
                 "role": "system",
-                "content": """You are an AI tasked with categorizing claims made by hotel guests. Each claim should be assigned one of the following categories:
-                    Housekeeping: Issues related to room cleanliness, bedding, toiletries, or other housekeeping services.
-                    Maintenance: Issues related to room repairs, equipment, plumbing, lighting, or any physical repairs needed.
-                    Guest Relations: Issues related to staff interactions, complaints about service, check-in/check-out issues, or general guest concerns.
-                    Dining: Issues related to food quality, restaurant service, dining area cleanliness, or any problems with meals.
-                    If you cannot confidently determine the category, respond with 'unknown.' Return only the category name or 'unknown' with no extra text.""",
+                "content": """You are an AI tasked with categorizing complaints submitted by hotel guests.
+
+First, determine whether the text is a genuine complaint about a hotel service. If the text is off-topic, nonsensical, abusive, a test message, or clearly unrelated to any hotel service, respond with 'Invalid'.
+
+If the text is a legitimate hotel complaint, assign it to exactly one of these categories:
+- Housekeeping: room cleanliness, bedding, toiletries, or housekeeping services.
+- Maintenance: room repairs, equipment, plumbing, lighting, or physical repairs.
+- Guest Relations: staff interactions, service complaints, check-in/check-out issues, or general guest concerns.
+- Dining: food quality, restaurant service, dining area cleanliness, or meal problems.
+
+If the text is clearly hotel-related but does not fit any category with high confidence, respond with 'Unknown'.
+
+Return only one of: Housekeeping, Maintenance, Guest Relations, Dining, Unknown, Invalid — no extra text.""",
             },
             {"role": "user", "content": claim_text},
         ],
@@ -377,6 +384,11 @@ def add_guest_claims(
         claim_text = payload.text
         claim_language = detect_language(claim_text)
         claim_category = define_category(claim_text)
+        if claim_category == ClaimCategory.Invalid.value:
+            raise HTTPException(
+                status_code=406,
+                detail="Your message does not appear to be a valid hotel service complaint. Please describe an issue related to your stay.",
+            )
         claim_dict.update(
             dict(
                 claim_text=claim_text,
@@ -420,6 +432,11 @@ def add_guest_claims(
             claim_text = transcript_audio(destination_file)
             claim_language = detect_language(claim_text)
             claim_category = define_category(claim_text)
+            if claim_category == ClaimCategory.Invalid.value:
+                raise HTTPException(
+                    status_code=406,
+                    detail="Your message does not appear to be a valid hotel service complaint. Please describe an issue related to your stay.",
+                )
             voice_url = storage_client.upload_to_bucket(
                 "voice_claim_files",
                 destination_file,

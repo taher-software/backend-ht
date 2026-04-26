@@ -36,6 +36,43 @@ def add_new_stay(payload: StayRegistry, current_user: dict, db=None) -> ApiRespo
             dict(phone_number=payload.guest_phone_number), db=db, commit=False
         )
 
+    # Check if the room is already occupied during the requested period
+    room_conflict = (
+        db.query(Stay)
+        .filter(
+            and_(
+                Stay.room_id == payload.room_id,
+                Stay.start_date <= payload.end_date,
+                Stay.end_date >= payload.start_date,
+            )
+        )
+        .first()
+    )
+    if room_conflict:
+        raise HTTPException(
+            status.HTTP_406_NOT_ACCEPTABLE,
+            "The room is already occupied during the requested period",
+        )
+
+    # Check if the guest already has a stay in this namespace that overlaps by at least one day
+    guest_conflict = (
+        db.query(Stay)
+        .filter(
+            and_(
+                Stay.guest_id == payload.guest_phone_number,
+                Stay.namespace_id == current_user["namespace_id"],
+                Stay.start_date <= payload.end_date,
+                Stay.end_date >= payload.start_date,
+            )
+        )
+        .first()
+    )
+    if guest_conflict:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The guest already has a stay in this property that overlaps with the requested period",
+        )
+
     stay_payload = dict(
         namespace_id=current_user["namespace_id"],
         guest_id=payload.guest_phone_number,

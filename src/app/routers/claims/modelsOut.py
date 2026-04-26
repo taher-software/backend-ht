@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict
 from src.app.globals.response import ApiResponse
 from src.app.routers.users.modelsIn import UserOrm
-from src.app.routers.stays.modelsIn import StayOrm
+from src.app.routers.stays.modelsOut import StayOrm, StayOut
 
 
 class ClaimGI(BaseModel):
@@ -39,7 +39,7 @@ class ClaimDetails(BaseModel):
 
     receiver: UserOrm | None = Field(None, alias="receiver")
     resolver: UserOrm | None = Field(None, alias="resolver")
-    stay: StayOrm | None = Field(None, alias="stay")
+    stay: StayOut | None = Field(None, alias="stay")
 
     class Config:
         from_attributes = True
