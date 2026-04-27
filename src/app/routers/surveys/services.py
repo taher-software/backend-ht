@@ -21,6 +21,7 @@ from src.app.db.models import Namespace
 from src.app.db.models import DailyRestaurantSurvey
 from src.app.db.models import RoomReceptionSurvey
 from src.app.db.models import DailyRoomSatisfactionSurvey
+from src.app.db.models.queue_root_cause import QueueRootCause
 from src.app.db.models import Stay
 from src.app.globals.enum import Survey
 from fastapi import HTTPException
@@ -413,6 +414,35 @@ def submit_survey(payload, current_guest, db: Session):
     room_id = current_stay.room_id
     responses = payload.responses
     survey_type = payload.survey_type
+    stay_id = current_stay.id
+
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+
+    survey_model_map = {
+        Survey.ROOM_RECEPTION: RoomReceptionSurvey,
+        Survey.RESTAURANT: DailyRestaurantSurvey,
+        Survey.DAILY_ROOM: DailyRoomSatisfactionSurvey,
+    }
+    duplicate = None
+    survey_model = survey_model_map.get(survey_type)
+    if survey_model:
+        duplicate = (
+            db.query(survey_model)
+            .filter(
+                survey_model.namespace_id == namespace_id,
+                survey_model.guest_phone_number == phone_number,
+                survey_model.stay_id == stay_id,
+                survey_model.created_at >= today_start,
+                survey_model.created_at < today_end,
+            )
+            .first()
+        )
+    if duplicate:
+        raise HTTPException(
+            status_code=429,
+            detail="Survey already submitted for today.",
+        )
 
     # Validate responses
     if survey_type == Survey.RESTAURANT:
@@ -459,7 +489,7 @@ def submit_survey(payload, current_guest, db: Session):
     survey_data = dict(
         namespace_id=namespace_id,
         guest_phone_number=phone_number,
-        stay_id=current_stay.id,
+        stay_id=stay_id,
         Q1=responses[0] if len(responses) > 0 else None,
         Q2=responses[1] if len(responses) > 1 else None,
         Q3=responses[2] if len(responses) > 2 else None,
@@ -472,6 +502,21 @@ def submit_survey(payload, current_guest, db: Session):
         daily_restaurant_survey_controller.create(survey_data, db, commit=False)
         if len(responses) == 5:
             last_item = responses[4]
+            queue_duplicate = (
+                db.query(QueueRootCause)
+                .filter(
+                    QueueRootCause.namespace_id == namespace_id,
+                    QueueRootCause.guest_phone_number == phone_number,
+                    QueueRootCause.created_at >= today_start,
+                    QueueRootCause.created_at < today_end,
+                )
+                .first()
+            )
+            if queue_duplicate:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Queue root cause already submitted for today.",
+                )
             queue_data = dict(
                 namespace_id=namespace_id,
                 guest_phone_number=phone_number,
