@@ -46,6 +46,7 @@ class SettingsBase(BaseModel):
     surveys: Optional[Surveys] = None
     check_in_out: CheckInOut
     satisfaction_threshold: Optional[float] = None
+    claim_resolution_time: Optional[int] = None
 
     @field_validator("satisfaction_threshold")
     @classmethod
@@ -67,6 +68,7 @@ class SettingsUpdate(BaseModel):
     surveys: Optional[Surveys] = None
     check_in_out: Optional[CheckInOut] = None
     satisfaction_threshold: Optional[float] = None
+    claim_resolution_time: Optional[int] = None
 
     @field_validator("satisfaction_threshold")
     @classmethod

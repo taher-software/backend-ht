@@ -79,6 +79,9 @@ def _nested_to_flat(settings) -> dict:
     if "satisfaction_threshold" in data and data["satisfaction_threshold"] is not None:
         flat["satisfaction_threshold"] = data["satisfaction_threshold"] / 100
 
+    if "claim_resolution_time" in data:
+        flat["claim_resolution_time"] = data["claim_resolution_time"]
+
     return flat
 
 
@@ -119,6 +122,7 @@ def _flat_to_nested(db_dict: dict) -> dict:
             if db_dict.get("satisfaction_threshold") is not None
             else None
         ),
+        "claim_resolution_time": db_dict.get("claim_resolution_time"),
         "created_at": db_dict.get("created_at"),
         "updated_at": db_dict.get("updated_at"),
     }

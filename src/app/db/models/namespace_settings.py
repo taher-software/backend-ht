@@ -34,6 +34,9 @@ class NamespaceSettings(Base):
         Float, nullable=False, server_default="0.5"
     )
 
+    # Claim resolution time in minutes
+    claim_resolution_time = Column(Integer, nullable=True)
+
     # Timestamps
     created_at = Column(
         DateTime(timezone=False), index=True, nullable=False, default=get_utc_time

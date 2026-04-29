@@ -11,5 +11,6 @@ class SettingsResponse(BaseModel):
     surveys: Surveys
     check_in_out: CheckInOut
     satisfaction_threshold: float | None = None
+    claim_resolution_time: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
