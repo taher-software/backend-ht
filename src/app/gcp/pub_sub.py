@@ -86,6 +86,7 @@ class PubSubInteraction:
         job_type: JobType,
         namespace_id: int,
         payload: Optional[Dict[str, Any]] = None,
+        job_id: Optional[str] = None,
     ) -> str:
         """
         Publish a job to the Pub/Sub topic.
@@ -94,12 +95,13 @@ class PubSubInteraction:
             job_type: Type of job to execute (from JobType enum)
             namespace_id: Namespace ID to process
             payload: Optional additional data for the job
+            job_id: Optional deterministic job ID; a UUID is generated when omitted
 
         Returns:
             job_id: Unique identifier for this job
         """
-        # Generate unique job ID
-        job_id = str(uuid.uuid4())
+        # Use provided job_id or generate a unique one
+        job_id = job_id or str(uuid.uuid4())
 
         # Construct message with standardized schema
         message_data = {

@@ -32,6 +32,7 @@ from src.async_jobs.tasks.add_meals_reminder import (
 
 from src.async_jobs.tasks.assignment_reminder import send_notif_assignments_reminder_for_namespace
 from src.async_jobs.tasks.guest_satisfaction_alert import send_satisfaction_alert
+from src.async_jobs.tasks.daily_performance_report import send_daily_performance_report
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ JOB_HANDLERS = {
     JobType.DINNER_REMINDER: send_notif_dinner_menu_reminder_for_namespace,
     JobType.ASSIGNMENT_REMINDER: send_notif_assignments_reminder_for_namespace,
     JobType.GUEST_SATISFACTION_ALERT: send_satisfaction_alert,
+    JobType.DAILY_PERFORMANCE_REPORT: send_daily_performance_report,
 }
 
 

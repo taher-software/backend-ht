@@ -60,6 +60,9 @@ class JobType(str, Enum):
     # Guest satisfaction alerts
     GUEST_SATISFACTION_ALERT = "guest_satisfaction_alert"
 
+    # Daily hotel performance report
+    DAILY_PERFORMANCE_REPORT = "daily_performance_report"
+
 
 class CachingCollectionName(str, Enum):
     """Enum for Firestore collection names used in caching"""
@@ -87,9 +90,16 @@ class CachingCollectionName(str, Enum):
     ASSIGNMENTS_REMINDERS_NOTIF_TITLES: str = "assignments_reminders_notif_titles"
     ASSIGNMENTS_REMINDERS_NOTIF_BODY: str = "assignments_reminders_notif_body"
 
+    # Guest satisfaction alert templates
+    GUEST_SATISFACTION_NOTIF_TEMPLATES: str = "guest_satisfaction_notif_templates"
+    GUEST_SATISFACTION_EMAIL_TEMPLATES: str = "guest_satisfaction_email_templates"
+
     # Task deduplication (separate collections for each worker type)
     PROCESSED_PUBSUB_TASKS: str = "processed_pubsub_tasks"
     PROCESSED_CLOUD_TASKS: str = "processed_cloud_tasks"
+
+    # Daily performance report email templates (cached per language)
+    DAILY_REPORT_EMAIL_TEMPLATES: str = "daily_report_email_templates"
 
 
 class NotifMediaText(str, Enum):
