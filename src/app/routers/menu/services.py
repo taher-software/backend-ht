@@ -109,7 +109,7 @@ def get_current_menu(db, current_guest):
             )
     meal_time_range = format_meal_time_range(ns_settings, meal_type)
     response = dict(
-        meal_type=meal_type.value, menu=result, meal_time_range=meal_time_range
+        meal_type=meal_type, menu=result, meal_time_range=meal_time_range
     )
 
     return response
