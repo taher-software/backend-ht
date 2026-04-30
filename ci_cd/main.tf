@@ -76,6 +76,12 @@ locals {
             uri = "https://bodor-web-app-368726253523.europe-west1.run.app/assignments/plan_assignments_reminder"
         }
 
+        daily-hotel-summary-report = {
+            schedule = "0 9 * * *"
+            description = "Trigger daily hotel performance report emails at 09:00 UTC"
+            uri = "https://bodor-web-app-368726253523.europe-west1.run.app/reports/daily-summary"
+        }
+
     }
 
     services = {
