@@ -4,7 +4,8 @@ from google.api_core import exceptions as gcp_exceptions
 from src.settings import settings
 import json
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from src.app.globals.enum import JobType
 
 logger = logging.getLogger(__name__)
@@ -18,13 +19,13 @@ class CloudTask:
     and schedule tasks with configurable delays.
     """
 
-    def __init__(self, queue_name: str, location: str = "us-central1"):
+    def __init__(self, queue_name: str, location: str ="europe-west1"):
         """
         Initialize Cloud Tasks client and create/verify queue.
 
         Args:
             queue_name: Name of the queue to create/use
-            location: GCP region for the queue (default: 'us-central1')
+            location: GCP region for the queue (default: 'europe-west1')
         """
         self.client = tasks_v2.CloudTasksClient()
         self.location = location
@@ -113,15 +114,21 @@ class CloudTask:
             raise
 
     def create_task(
-        self, delay: int, namespace_id: int, job_type: JobType, guest_id: str = None
+        self,
+        delay: int,
+        namespace_id: int,
+        job_type: JobType,
+        timezone_name: str,
+        guest_id: str = None,
     ) -> str:
         """
-        Schedule a task with specified delay.
+        Schedule a task with specified delay relative to the namespace's local time.
 
         Args:
             delay: Delay in seconds before task execution (max: 30 days = 2,592,000 seconds)
             namespace_id: Namespace ID to process
             job_type: Type of job from JobType enum
+            timezone_name: IANA timezone name of the namespace (e.g. 'Europe/Paris')
             guest_id: Optional guest ID (phone number) for guest-specific tasks
 
         Returns:
@@ -140,8 +147,9 @@ class CloudTask:
         # Generate unique task ID
         task_id = str(uuid.uuid4())
 
-        # Calculate schedule time
-        schedule_time = datetime.now(timezone.utc) + timedelta(seconds=delay)
+        # Calculate schedule time anchored to the namespace's local clock
+        ns_tz = ZoneInfo(timezone_name)
+        schedule_time = datetime.now(ns_tz) + timedelta(seconds=delay)
 
         # Build task payload (matches CloudTaskPayload schema)
         payload = {
@@ -155,12 +163,17 @@ class CloudTask:
             payload["guest_id"] = guest_id
 
         # Construct the task
+        worker_url = f"{settings.worker_url}/cloud_job"
         task = tasks_v2.Task(
             http_request=tasks_v2.HttpRequest(
                 http_method=tasks_v2.HttpMethod.POST,
-                url=f"{settings.worker_url}/cloud_job",
+                url=worker_url,
                 headers={"Content-Type": "application/json"},
                 body=json.dumps(payload).encode("utf-8"),
+                oidc_token=tasks_v2.OidcToken(
+                    service_account_email=f"{settings.google_project_id}@appspot.gserviceaccount.com",
+                    audience=worker_url,
+                ),
             ),
             schedule_time=schedule_time,
         )

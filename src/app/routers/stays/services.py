@@ -3,7 +3,7 @@ from src.app.resourcesController import (
     stay_controller,
     users_controller,
 )
-from src.app.db.models import Stay
+from src.app.db.models import Stay, Namespace
 from .modelsIn import StayRegistry, StayUpdate
 from src.app.globals.response import ApiResponse
 from fastapi import HTTPException, status
@@ -89,10 +89,12 @@ def add_new_stay(payload: StayRegistry, current_user: dict, db=None) -> ApiRespo
 
     # Schedule room reception survey with 2-hour delay (7200 seconds)
     try:
+        namespace = db.query(Namespace).filter(Namespace.id == current_user["namespace_id"]).first()
         task_id = cloud_task_manager.create_task(
             delay=7200,  # 2 hours = 7200 seconds
             namespace_id=current_user["namespace_id"],
             job_type=JobType.ROOM_RECEPTION_SURVEY,
+            timezone_name=namespace.timezone,
             guest_id=payload.guest_phone_number,
         )
         logging.info(

@@ -2,7 +2,8 @@ resource "google_cloud_scheduler_job" "job" {
   name        = var.name
   description = var.description
   schedule    = var.schedule
-  region   = var.region
+  time_zone   = var.time_zone
+  region      = var.region
 
   http_target {
     uri         = var.uri

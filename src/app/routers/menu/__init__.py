@@ -31,6 +31,12 @@ def get_current_menu_endpoint(
     """Get current menu for the guest based on time and eligibility"""
     dishes = get_current_menu(db, current_guest)
 
+    if dishes["meal_type"] is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active meal window at the current time",
+        )
+
     return CurrentMenuResponse(
         dishes=[DishOut(**dish) for dish in dishes["menu"]],
         meal=dishes["meal_type"],

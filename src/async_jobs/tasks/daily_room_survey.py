@@ -59,7 +59,6 @@ def send_admin_failure_notification_for_job(details: dict):
 def create_room_survey_notif_body(guest_name: str, language: str):
     completion = client.chat.completions.create(
         model="gpt-5-mini",
-        temperature=0,
         messages=[
             {
                 "role": "system",

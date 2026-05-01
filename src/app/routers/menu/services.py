@@ -5,7 +5,7 @@ from src.app.db.models.meals import Meal
 from src.app.db.models.menu import Menu
 from src.app.db.models.dishes import Dishes
 from src.app.globals.enum import MealEnum
-from datetime import datetime, date, timezone as stdlib_timezone
+from datetime import datetime, timezone as stdlib_timezone
 from pytz import timezone, UTC
 from fastapi import HTTPException
 from src.app.globals.utils import (
@@ -23,14 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 def get_current_menu(db, current_guest):
-    today = date.today()
+    utc_today = datetime.now(UTC).date()
     # Get current stay
     current_stay = (
         db.query(Stay)
         .filter(
             Stay.guest_id == current_guest["phone_number"],
-            Stay.start_date <= today,
-            Stay.end_date >= today,
+            Stay.start_date <= utc_today,
+            Stay.end_date >= utc_today,
         )
         .first()
     )
@@ -109,7 +109,7 @@ def get_current_menu(db, current_guest):
             )
     meal_time_range = format_meal_time_range(ns_settings, meal_type)
     response = dict(
-        meal_type=meal_type, menu=result, meal_time_range=meal_time_range
+        meal_type=meal_type.value, menu=result, meal_time_range=meal_time_range
     )
 
     return response

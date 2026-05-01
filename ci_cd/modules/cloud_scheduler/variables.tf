@@ -1,4 +1,7 @@
 variable "name" {}
+variable "time_zone" {
+    default = "Africa/Tunis"
+}
 variable "description" {}
 variable "schedule" {}
 variable "region" {

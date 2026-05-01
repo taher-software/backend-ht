@@ -51,7 +51,8 @@ from src.app.globals.error import dbError
 from src.app.secrets.jwt import sign_jwt
 from src.app.db.models import Stay, Claim, Users, Meal, Room
 from sqlalchemy import desc, func
-from datetime import datetime, date
+from datetime import datetime, date, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 from src.app.globals.schema_models import ClaimStatus
 from src.app.globals.schema_models import role_categ_assoc
 from .services import detect_time_zone
@@ -320,7 +321,7 @@ def get_token(
 @router.get("/me", response_model=MeResponse)
 def me(
     current_guest: dict = Depends(CurrentUserIdentifier(who="any")),
-    db=Depends(get_db),
+    db=Depends(get_db)
 ) -> ApiResponse:
 
     if "id" not in current_guest:
@@ -330,7 +331,7 @@ def me(
             .order_by(desc(Stay.start_date))
             .first()
         )
-        today = datetime.now().date()
+        today = datetime.now(dt_timezone.utc).date()
 
         sejour = dict(stay=False)
         sejour["fullname"] = (
@@ -362,8 +363,10 @@ def me(
             )
             menu_count = 0
             if ns_settings:
-                now = datetime.now().time()
-                today = datetime.now().date()
+                ns_tz = ZoneInfo(namespace["timezone"])
+                now_local = datetime.now(dt_timezone.utc).astimezone(ns_tz)
+                now = now_local.time()
+                today = now_local.date()
                 today_meal_types = {
                     meal.meal_type
                     for meal in db.query(Meal).filter(
