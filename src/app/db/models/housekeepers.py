@@ -12,9 +12,9 @@ class Housekeeper(Base):
     avatar_url = Column(String(255), nullable=True, default=settings.default_profile)
     first_name = Column(String(255), nullable=False)
     last_name = Column(String(255), nullable=False)
-    created_at = Column(DateTime(timezone=False), nullable=False, default=get_utc_time)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=get_utc_time)
     updated_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         nullable=False,
         default=get_utc_time,
         onupdate=get_utc_time,

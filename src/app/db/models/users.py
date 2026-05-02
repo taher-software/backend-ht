@@ -24,12 +24,12 @@ class Users(Base):
     hashed_password = Column(String(255), index=True, nullable=True)
     role = Column(ARRAY(String), nullable=False)
     created_at = Column(
-        DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
+        DateTime(timezone=True), index=True, nullable=False, default=get_utc_time
     )
     pref_language = Column(String(255), nullable=True)
     security_code = Column(String(4), nullable=True)
     updated_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         index=True,
         nullable=False,
         default=get_utc_time,

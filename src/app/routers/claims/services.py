@@ -13,6 +13,7 @@ from src.app.globals.satisfaction import check_and_trigger_satisfaction_alert
 from src.app.resourcesController import settings_controller
 from src.app.db.models import Users, Stay, Room, Guest
 from src.app.db.models.claims import Claim
+from src.app.db.models.namespace import Namespace
 from src.app.gcp.gcs import storage_client
 from fastapi import UploadFile, HTTPException, status
 from sqlalchemy import asc, desc, and_, or_, func
@@ -22,7 +23,8 @@ import tempfile
 from src.settings import client
 from functools import lru_cache
 from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 from typing import Literal
 import backoff
 import openai
@@ -368,6 +370,12 @@ def create_resume_claim(
     return response.output_text
 
 
+def _ns_now(namespace_id: int, db) -> datetime:
+    ns = db.query(Namespace).filter(Namespace.id == namespace_id).first()
+    tz = ZoneInfo(ns.timezone) if ns and ns.timezone else dt_timezone.utc
+    return datetime.now(tz)
+
+
 @transactional
 def add_guest_claims(
     payload: ClaimIn | None,
@@ -471,6 +479,9 @@ def add_guest_claims(
 
     claim_dict.update(dict(namespace_id=stay.namespace_id))
     claim_dict.update(dict(stay_id=stay.id))
+
+    now = _ns_now(stay.namespace_id, db)
+    claim_dict.update(dict(created_at=now, updated_at=now))
 
     claim_controller.create(claim_dict, commit=False, db=db)
 
@@ -576,6 +587,9 @@ def update_claim_status(
             f"Claim with id {claim_id} not found",
         )
 
+    now = _ns_now(claim["namespace_id"], db)
+    payload["updated_at"] = now
+
     if action in ["acknowledge", "resolve"]:
         if "id" not in current_user:
             raise HTTPException(
@@ -611,7 +625,7 @@ def update_claim_status(
                 "Claim can only be approved or rejected if it is in resolved status",
             )
         if action == "approve":
-            payload["approve_claim_time"] = datetime.now()
+            payload["approve_claim_time"] = now
             # Deactivate chat room associated with this claim
             chat_room = chatRoom_controller.find_by_field("claim_id", claim_id)
             if chat_room:
@@ -619,7 +633,7 @@ def update_claim_status(
                     chat_room["id"], {"active": False}, commit=False, db=db
                 )
         if action == "reject":
-            payload["reject_claim_time"] = datetime.now()
+            payload["reject_claim_time"] = now
 
     if action == "acknowledge":
         if claim["status"] != ClaimStatus.pending.value:
@@ -628,7 +642,7 @@ def update_claim_status(
                 "Claim can only be acknowledged if it is in pending status",
             )
         payload["acknowledged_employee_id"] = current_user["id"]
-        payload["acknowledged_claim_time"] = datetime.now()
+        payload["acknowledged_claim_time"] = now
 
     if action == "resolve":
         if claim["status"] != ClaimStatus.processing.value:
@@ -637,7 +651,7 @@ def update_claim_status(
                 "Claim can only be resolved if it is in processing status",
             )
         payload["resolver_employee_id"] = current_user["id"]
-        payload["resolve_claim_time"] = datetime.now()
+        payload["resolve_claim_time"] = now
 
     claim_controller.update(claim_id, payload, db=db, commit=False)
 

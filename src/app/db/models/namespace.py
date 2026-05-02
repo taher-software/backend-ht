@@ -25,10 +25,10 @@ class Namespace(Base):
     timezone = Column(String(50), nullable=False)
 
     created_at = Column(
-        DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
+        DateTime(timezone=True), index=True, nullable=False, default=get_utc_time
     )
     updated_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         index=True,
         default=get_utc_time,
         onupdate=get_utc_time,

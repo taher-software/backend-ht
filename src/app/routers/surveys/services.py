@@ -5,8 +5,9 @@ from src.app.globals.utils import (
     queue_factors,
     dishes_questions,
 )
-from functools import lru_cache
 from src.settings import client
+import backoff
+import openai
 import ast
 import json
 import logging
@@ -38,12 +39,13 @@ from src.app.resourcesController import (
     queue_root_cause_controller,
 )
 from src.app.globals.decorators import transactional
+from src.app.gcp import firestore_client
 from src.app.globals.response import ApiResponse
 from src.app.globals.utils import dishes_questions
 from src.app.db.models.dishes import Dishes
 from src.app.db.models.meals import Meal
 from src.app.db.models.menu import Menu
-from src.app.globals.enum import MealEnum
+from src.app.globals.enum import MealEnum, CachingCollectionName
 from src.app.db.models.dishes_survey import DishesSurvey
 from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from .modelsIn import DishesSurveySubmitPayload
@@ -115,11 +117,28 @@ def get_current_stay(db: Session, phone_number: str) -> Stay:
     return current_stay
 
 
-@lru_cache
+_SURVEY_TRANSLATION_COLLECTIONS = {
+    "daily_room": CachingCollectionName.SURVEY_TRANSLATIONS_DAILY_ROOM,
+    "room_reception": CachingCollectionName.SURVEY_TRANSLATIONS_ROOM_RECEPTION,
+    "restaurant_exp": CachingCollectionName.SURVEY_TRANSLATIONS_RESTAURANT_EXP,
+    "queue_factors": CachingCollectionName.SURVEY_TRANSLATIONS_QUEUE_FACTORS,
+    "dishes": CachingCollectionName.SURVEY_TRANSLATIONS_DISHES,
+}
+
+
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3)
 def translate_list_of_data(language: str, data_label: str) -> list[str] | str:
     data = questions_labels.get(data_label)
     if not data:
         return f"Error: Unknown data label '{data_label}'"
+
+    lang_key = language.lower()
+    collection = _SURVEY_TRANSLATION_COLLECTIONS.get(data_label)
+
+    if collection:
+        cached = firestore_client.get_document(collection_name=collection, document_id=lang_key)
+        if cached and "translations" in cached:
+            return cached["translations"]
 
     prompt = (
         f"The target language is {language}. "
@@ -143,19 +162,31 @@ def translate_list_of_data(language: str, data_label: str) -> list[str] | str:
             ],
         )
         raw_output = completion.choices[0].message.content.strip()
-        # Remove markdown code blocks if present
         if raw_output.startswith("```"):
-            raw_output = raw_output.split("\n", 1)[1]  # Remove first line with ```json
-            raw_output = raw_output.rsplit("```", 1)[0]  # Remove last line with ```
+            raw_output = raw_output.split("\n", 1)[1]
+            raw_output = raw_output.rsplit("```", 1)[0]
             raw_output = raw_output.strip()
-        return json.loads(raw_output)  # Convert JSON string to list
+        translations = json.loads(raw_output)
+        if collection:
+            firestore_client.create_document(
+                collection_name=collection,
+                data={"translations": translations},
+                document_id=lang_key,
+            )
+        return translations
     except Exception as e:
         logger.error(f"Translation error for {data_label}: {e}")
         raise e
 
 
-@lru_cache
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3)
 def translate_queue_factors(language: str) -> list[str] | str:
+    lang_key = language.lower()
+    collection = CachingCollectionName.SURVEY_TRANSLATIONS_QUEUE_FACTORS
+
+    cached = firestore_client.get_document(collection_name=collection, document_id=lang_key)
+    if cached and "translations" in cached:
+        return cached["translations"]
 
     prompt = (
         f"The target language is {language}. "
@@ -179,24 +210,80 @@ def translate_queue_factors(language: str) -> list[str] | str:
             ],
         )
         raw_output = completion.choices[0].message.content.strip()
-        # Remove markdown code blocks if present
         if raw_output.startswith("```"):
-            raw_output = raw_output.split("\n", 1)[1]  # Remove first line with ```json
-            raw_output = raw_output.rsplit("```", 1)[0]  # Remove last line with ```
+            raw_output = raw_output.split("\n", 1)[1]
+            raw_output = raw_output.rsplit("```", 1)[0]
             raw_output = raw_output.strip()
-        return json.loads(raw_output)  # Convert JSON string to list
+        translations = json.loads(raw_output)
+        firestore_client.create_document(
+            collection_name=collection,
+            data={"translations": translations},
+            document_id=lang_key,
+        )
+        return translations
     except Exception as e:
-        print(f"Translation error for queue_factors: {e}")
-        print(f"Raw output: {raw_output}")
+        logger.error(f"Translation error for queue_factors: {e}")
         raise e
 
 
-@lru_cache
-def translate_meal_context_question(language: str, question: str) -> str:
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3)
+def translate_dishes_meal_template(language: str) -> str:
+    lang_key = language.lower()
+    collection = CachingCollectionName.SURVEY_TRANSLATIONS_DISHES_MEAL_TEMPLATE
+
+    cached = firestore_client.get_document(collection_name=collection, document_id=lang_key)
+    if cached and "template" in cached:
+        return cached["template"]
+
+    source = dishes_questions[0]
+    prompt = (
+        f"The target language is {language}. "
+        f"Translate the following string accurately. "
+        f"It contains a Python positional placeholder {{}} that must be kept exactly as-is in the translation. "
+        f"Respond with only the translated string, nothing else:\n\n{source}"
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an AI translator. "
+                        "Translate the given string into the target language. "
+                        "Preserve any {} placeholders exactly as they appear in the original."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+        template = completion.choices[0].message.content.strip()
+        firestore_client.create_document(
+            collection_name=collection,
+            data={"template": template},
+            document_id=lang_key,
+        )
+        return template
+    except Exception as e:
+        logger.error(f"Translation error for dishes meal template: {e}")
+        raise e
+
+
+@backoff.on_exception(backoff.expo, openai.APIError, max_tries=3)
+def translate_meal_tast_question(language: str, question: str) -> str:
+    lang_key = f"{language.lower()}_{question}"
+    collection = CachingCollectionName.SURVEY_TRANSLATIONS_MEAL_TAST_QUESTION
+
+    cached = firestore_client.get_document(collection_name=collection, document_id=lang_key)
+    if cached and "translation" in cached:
+        return cached["translation"]
+
     prompt = (
         f"The target language is {language}. "
         f"Translate the following phrase or question accurately, preserving its intended meaning:\n\n{question}"
     )
+
     try:
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -210,10 +297,16 @@ def translate_meal_context_question(language: str, question: str) -> str:
                 {"role": "user", "content": prompt},
             ],
         )
-        return completion.choices[0].message.content.strip()
+        translation = completion.choices[0].message.content.strip()
+        firestore_client.create_document(
+            collection_name=collection,
+            data={"translation": translation},
+            document_id=lang_key,
+        )
+        return translation
     except Exception as e:
-        print(f"Translation failed: {e}")
-        raise
+        logger.error(f"Translation error for meal tast question: {e}")
+        raise e
 
 
 def get_prioritized_survey(db: Session, current_user: dict) -> dict:
@@ -281,19 +374,16 @@ def get_prioritized_survey(db: Session, current_user: dict) -> dict:
 
                 meal_types = ["breakfast", "lunch", "dinner"]
                 meal_questions = {}
+                if current_user["pref_language"]:
+                    meal_template = translate_dishes_meal_template(current_user["pref_language"])
+                else:
+                    meal_template = dishes_questions[0]
                 for meal in meal_types:
-                    raw_q = dishes_questions[0].format(meal)
-                    if current_user["pref_language"]:
-                        translated_q = translate_meal_context_question(
-                            current_user["pref_language"], raw_q
-                        )
-                    else:
-                        translated_q = raw_q
-                    meal_questions[f"{meal}_questions"] = translated_q
+                    meal_questions[f"{meal}_questions"] = meal_template.format(meal)
                 # Add dish question (second item)
                 raw_dish_q = dishes_questions[1]
                 if current_user["pref_language"]:
-                    dish_question = translate_meal_context_question(
+                    dish_question = translate_meal_tast_question(
                         current_user["pref_language"], raw_dish_q
                     )
                 else:

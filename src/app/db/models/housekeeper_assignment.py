@@ -24,10 +24,10 @@ class HousekeeperAssignment(Base):
     )
     date = Column(Date, nullable=False, index=True)
     created_at = Column(
-        DateTime(timezone=False), nullable=False, default=get_utc_time
+        DateTime(timezone=True), nullable=False, default=get_utc_time
     )
     updated_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         nullable=False,
         default=get_utc_time,
         onupdate=get_utc_time,

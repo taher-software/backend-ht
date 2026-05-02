@@ -21,10 +21,10 @@ class QueueRootCause(Base):
 
     # Timestamps
     created_at = Column(
-        DateTime(timezone=False), index=True, nullable=False, default=get_utc_time
+        DateTime(timezone=True), index=True, nullable=False, default=get_utc_time
     )
     updated_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         index=True,
         nullable=False,
         default=get_utc_time,

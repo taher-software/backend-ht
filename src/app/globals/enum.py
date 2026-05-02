@@ -101,6 +101,15 @@ class CachingCollectionName(str, Enum):
     # Daily performance report email templates (cached per language)
     DAILY_REPORT_EMAIL_TEMPLATES: str = "daily_report_email_templates"
 
+    # Survey question translations (one collection per data_label, one doc per language)
+    SURVEY_TRANSLATIONS_DAILY_ROOM: str = "survey_translations_daily_room"
+    SURVEY_TRANSLATIONS_ROOM_RECEPTION: str = "survey_translations_room_reception"
+    SURVEY_TRANSLATIONS_RESTAURANT_EXP: str = "survey_translations_restaurant_exp"
+    SURVEY_TRANSLATIONS_QUEUE_FACTORS: str = "survey_translations_queue_factors"
+    SURVEY_TRANSLATIONS_DISHES: str = "survey_translations_dishes"
+    SURVEY_TRANSLATIONS_DISHES_MEAL_TEMPLATE: str = "survey_translations_dishes_meal_template"
+    SURVEY_TRANSLATIONS_MEAL_TAST_QUESTION: str = "survey_translations_meal_tast_question"
+
 
 class NotifMediaText(str, Enum):
     Image: str = "Sent an image."
