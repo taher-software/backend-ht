@@ -28,19 +28,24 @@ def create_meal_with_menu(payload, current_user, db):
             status_code=400, detail="Namespace not found for current user."
         )
 
+    meal_date = (
+        payload.meal_date
+        if isinstance(payload.meal_date, date)
+        else date.fromisoformat(str(payload.meal_date))
+    )
     existing = (
         db.query(Meal)
         .filter(
             Meal.namespace_id == namespace_id,
             Meal.meal_type == payload.meal_type,
-            Meal.meal_date == payload.meal_date,
+            Meal.meal_date == meal_date,
         )
         .first()
     )
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"A {payload.meal_type} meal for {payload.meal_date} already exists in this namespace.",
+            detail=f"A {payload.meal_type} meal for {meal_date} already exists in this namespace.",
         )
 
     # Validate all dishes_ids belong to the same namespace
