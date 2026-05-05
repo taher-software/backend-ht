@@ -280,7 +280,7 @@ def send_satisfaction_alert(
                             user.current_device_token,
                             push_title,
                             push_body,
-                            "urgent",
+                            "claim",
                         )
                     except Exception as e:
                         logger.error(

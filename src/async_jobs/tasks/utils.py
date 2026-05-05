@@ -68,7 +68,7 @@ def _translate_template(source: dict, target_language: str) -> dict:
     """
     payload = json.dumps(source, ensure_ascii=False)
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",

@@ -26,6 +26,7 @@ from .services import (
     update_claim_status,
     get_current_employee_claims,
     close_guest_claim,
+    _ns_now,
 )
 from src.app.globals.utils import transcript_audio, transcribe_audio_from_gcs_link
 from pathlib import Path
@@ -192,7 +193,7 @@ def get_claims_status_listing(
     db=Depends(get_db),
 ) -> ApiResponse:
 
-    cutoff = datetime.now() - timedelta(hours=24)
+    cutoff = _ns_now(current_user["namespace_id"], db) - timedelta(hours=24)
     query = (
         db.query(Claim)
         .filter(
