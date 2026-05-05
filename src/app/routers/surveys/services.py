@@ -51,6 +51,7 @@ from src.app.db.models.housekeeper_assignment import HousekeeperAssignment
 from .modelsIn import DishesSurveySubmitPayload
 from src.app.globals.satisfaction import check_and_trigger_satisfaction_alert
 from src.app.resourcesController import settings_controller
+from functools import lru_cache
 
 questions_labels = {
     "daily_room": room_guest_satis_questions,
