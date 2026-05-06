@@ -694,6 +694,7 @@ def _apply_survey_deduction_and_alert(
     )
 
 
+
 @lru_cache
 def list_namespace_main_dishes(namespace_id: int, meal_type: MealEnum, db=None):
     """
