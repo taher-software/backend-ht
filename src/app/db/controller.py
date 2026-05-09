@@ -91,8 +91,9 @@ class dbController(DbControllerInterface):
     def update(self, resource_id, metadata, resource_key="id", commit=True, **kwargs):
         db = kwargs["db"]
         if resource_key == "id":
-            row_data = db.query(self.resource).get(resource_id).to_dict()
-            row_data.update(metadata)
+            row_data = db.query(self.resource).filter(
+            self.resource.id == resource_id
+            ).update(metadata)
         else:
             db.query(self.resource).filter(
                 getattr(self.resource, resource_key) == resource_id
