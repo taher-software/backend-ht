@@ -91,7 +91,7 @@ class dbController(DbControllerInterface):
     def update(self, resource_id, metadata, resource_key="id", commit=True, **kwargs):
         db = kwargs["db"]
         if resource_key == "id":
-            row_data = db.query(self.resource).filter(
+            db.query(self.resource).filter(
             self.resource.id == resource_id
             ).update(metadata)
         else:
@@ -99,7 +99,7 @@ class dbController(DbControllerInterface):
                 getattr(self.resource, resource_key) == resource_id
             ).update(metadata)
         db.commit() if commit else db.flush()
-        return row_data
+        return metadata
 
     def delete(self, resource_id, commit: bool = True, **kwargs):
         db = kwargs["db"]
