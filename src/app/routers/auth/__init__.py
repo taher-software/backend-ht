@@ -159,6 +159,7 @@ def mobile_login(
 
         if push_token:
             saved_token = guest["current_device_token"]
+            
             if not saved_token:
                 new_user = True
                 new_device = True
@@ -199,9 +200,13 @@ def mobile_login(
 
     if push_token:
         saved_token = app_user["current_device_token"]
+        #import ipdb;
+        #ipdb.set_trace()
         if not saved_token:
+            new_device = True
             new_user = True
-            users_controller.update(app_user["id"], dict(current_device_token=push_token), db=db)
+            #users_controller.update(app_user["id"], dict(current_device_token=push_token), db=db)
+        
         elif saved_token != push_token:
             new_device = True
             users_controller.update(
@@ -279,19 +284,19 @@ def get_token(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="resource_not_found")
 
         saved_token = resource["current_device_token"]
+        
+        if new_device and not new_user:
+            if saved_token != push_token:
+                guest_controller.update(
+                    phone_number,
+                    dict(current_device_token=push_token),
+                    resource_key="phone_number",
+                    db=db,
+                )
 
-        if new_user:
-            if saved_token is not None:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="device_already_registered")
-            guest_controller.update(phone_number, dict(current_device_token=push_token), resource_key="phone_number", db=db)
-        else:
-            if new_device:
-                if saved_token is None:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="no_device_registered_for_guest")
-                guest_controller.update(phone_number, dict(current_device_token=push_token), resource_key="phone_number", db=db)
-            else:
-                if push_token != saved_token:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
+        
+        if push_token != saved_token:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
 
         resource = guest_controller.find_by_id(phone_number)
     else:
@@ -301,18 +306,9 @@ def get_token(
 
         saved_token = resource["current_device_token"]
 
-        if new_user:
-            if saved_token is not None:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="device_already_registered")
-            users_controller.update(resource["id"], dict(current_device_token=push_token), db=db)
-        else:
-            if new_device:
-                if saved_token is None:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="no_device_registered_for_user")
-                users_controller.update(resource["id"], dict(current_device_token=push_token), db=db)
-            else:
-                if push_token != saved_token:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
+        
+        if push_token != saved_token:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="push_token_mismatch")
 
     token = sign_jwt(resource)
     return GetTokenResponse(data=GetTokenModel(token=token))
