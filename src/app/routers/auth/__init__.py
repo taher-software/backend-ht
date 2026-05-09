@@ -206,6 +206,11 @@ def mobile_login(
             new_device = True
             new_user = True
             #users_controller.update(app_user["id"], dict(current_device_token=push_token), db=db)
+            users_controller.update(
+                app_user["id"],
+                dict(security_code=generate_security_code()),
+                db=db,
+            )
         
         elif saved_token != push_token:
             new_device = True
