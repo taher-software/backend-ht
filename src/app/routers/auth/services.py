@@ -209,6 +209,7 @@ def handle_register_new_domain(payload, avatar, db=None):
 
     # owner_row = users_controller.find_by_field("user_email", payload_map.user_email)
     verification_link = f"{str(settings.application_url) + settings.email_confirmation_router}{sign_jwt(user_dict, expires=3600)}"
+
     if check_new_domain_result:
         send_email(
             payload_map.user_email,
@@ -225,6 +226,7 @@ def handle_register_new_domain(payload, avatar, db=None):
             logger.error(
                 f"Failed to send account under review email: {str(email_error)}"
             )
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="Failed to send account under review email. Please try again later.")
             # Continue even if email fails
 
         # Send alert to commercial team about suspicious account
@@ -239,7 +241,7 @@ def handle_register_new_domain(payload, avatar, db=None):
             logger.error(
                 f"Failed to send suspicious account alert to commercial team: {str(email_error)}"
             )
-            # Continue even if email fails
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="Failed to send alert to commercial team. Please try again later.")
 
     return {"data": "New domain registred successfully!"}
 

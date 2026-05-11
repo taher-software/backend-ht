@@ -111,8 +111,8 @@ resource "google_cloud_run_service" "service" {
                 }
 
                 env {
-                    name = "commercial_email_list"
-                    value = var.commercial_email_list 
+                    name = "commercial_emails"
+                    value = commercial_emails 
                 }
 
                 env {

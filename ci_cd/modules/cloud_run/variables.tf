@@ -82,7 +82,7 @@ variable "play_store_url" {
     default = "https://www.cartdna.com/what-is-my-shopify-url"
 }
 
-variable "commercial_email_list" {
+variable "commercial_emails" {
     type = string
     default = "ttaherhagui@gmail.com"
 }
