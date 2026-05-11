@@ -114,6 +114,11 @@ resource "google_cloud_run_service" "service" {
                     name = "commercial_email_list"
                     value = var.commercial_email_list 
                 }
+
+                env {
+                    name = "resend_api_key"
+                    value = var.resend_api_key 
+                }
             }
             
         }

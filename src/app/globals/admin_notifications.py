@@ -25,6 +25,7 @@ from email.mime.text import MIMEText
 from typing import List
 from datetime import datetime
 from src.settings import settings
+from src.app.globals.resend_template import send_email_with_resend
 
 logger = logging.getLogger(__name__)
 
@@ -321,20 +322,26 @@ def send_admin_failure_notification(
         success_count = 0
         for admin_email in admin_emails:
             try:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = settings.mail_username
-                msg["To"] = admin_email
+                # msg = MIMEMultipart("alternative")
+                # msg["Subject"] = subject
+                # msg["From"] = settings.mail_username
+                # msg["To"] = admin_email
 
-                # Attach HTML content
-                msg.attach(MIMEText(html_content, "html"))
+                # # Attach HTML content
+                # msg.attach(MIMEText(html_content, "html"))
 
-                # Send via SMTP
-                smtp = smtplib.SMTP("smtp.gmail.com", 587)
-                smtp.starttls()
-                smtp.login(settings.mail_username, settings.mail_pwd)
-                smtp.sendmail(settings.mail_username, admin_email, msg.as_string())
-                smtp.quit()
+                # # Send via SMTP
+                # smtp = smtplib.SMTP("smtp.gmail.com", 587)
+                # smtp.starttls()
+                # smtp.login(settings.mail_username, settings.mail_pwd)
+                # smtp.sendmail(settings.mail_username, admin_email, msg.as_string())
+                # smtp.quit()
+                send_email_with_resend(
+                    to_email=admin_email,
+                    subject=subject,
+                    html_content=html_content
+                    raising=True
+                )
 
                 success_count += 1
                 logger.info(
@@ -474,24 +481,30 @@ def send_batch_failure_summary(
 
         success_count = 0
         for admin_email in admin_emails:
-            try:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = settings.mail_username
-                msg["To"] = admin_email
-                msg.attach(MIMEText(html_content, "html"))
+            #try:
+                # msg = MIMEMultipart("alternative")
+                # msg["Subject"] = subject
+                # msg["From"] = settings.mail_username
+                # msg["To"] = admin_email
+                # msg.attach(MIMEText(html_content, "html"))
 
-                smtp = smtplib.SMTP("smtp.gmail.com", 587)
-                smtp.starttls()
-                smtp.login(settings.mail_username, settings.mail_pwd)
-                smtp.sendmail(settings.mail_username, admin_email, msg.as_string())
-                smtp.quit()
+                # smtp = smtplib.SMTP("smtp.gmail.com", 587)
+                # smtp.starttls()
+                # smtp.login(settings.mail_username, settings.mail_pwd)
+                # smtp.sendmail(settings.mail_username, admin_email, msg.as_string())
+                # smtp.quit()
 
-                success_count += 1
-                logger.info(f"Sent batch failure summary to {admin_email}")
+                # success_count += 1
+                # logger.info(f"Sent batch failure summary to {admin_email}")
+                send_email_with_resend(
+                    to_email=admin_email,
+                    subject=subject,
+                    html_content=html_content,
+                    raising=True
+                )
 
-            except Exception as e:
-                logger.error(f"Failed to send batch summary to {admin_email}: {str(e)}")
+            #except Exception as e:
+                #logger.error(f"Failed to send batch summary to {admin_email}: {str(e)}")
 
         return success_count > 0
 

@@ -22,7 +22,7 @@ variable "DB_PASSWORD" {
 
 variable "mail_username" {
     type = string
-    default = "ttaherhagui@gmail.com"
+    default = "bodor@bodor.tn"
 }
             
 variable "mail_pwd" {
@@ -111,6 +111,11 @@ variable "project_id" {
 variable "service_account_email" {
     type = string
     default = "368726253523-compute@developer.gserviceaccount.com"
+}
+
+variable "resend_api_key" {
+    type = string
+    default = "re_REQ5ayRn_WZoktpg3E6i9NCtiyPDLQfks"
 }
 
            

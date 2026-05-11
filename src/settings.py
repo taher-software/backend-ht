@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=os.getenv("env_file", "./.env"), extra="allow"
     )
+    resend_api_key: Optional[str] = Field(env="resend_api_key", default=None)
 
     @property
     def super_admin_email_list(self) -> list[str]:

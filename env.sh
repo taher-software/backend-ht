@@ -15,3 +15,4 @@ export jwt_algorithm=HS256
 #db_url=postgresql://haggui:77471580t@localhost/bodor_db
 export jwt_secret=taher
 export openia_apikey=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
+export resend_api_key=re_REQ5ayRn_WZoktpg3E6i9NCtiyPDLQfks

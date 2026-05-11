@@ -15,6 +15,7 @@ from src.app.db.models import Stay
 from sqlalchemy import and_
 from src.app.gcp import firestore_client
 from src.settings import client, settings
+from src.app.globals.resend_template import send_email_with_resend
 
 logger = logging.getLogger(__name__)
 
@@ -120,12 +121,13 @@ def _load_or_translate(
 # ---- Shared email sender ----------------------------------------------------
 
 def _send_email(to_email: str, subject: str, html_body: str) -> None:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"Bodor <{settings.mail_username}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html_body, "html"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.starttls()
-        smtp.login(settings.mail_username, settings.mail_pwd)
-        smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    # msg = MIMEMultipart("alternative")
+    # msg["Subject"] = subject
+    # msg["From"] = f"Bodor <{settings.mail_username}>"
+    # msg["To"] = to_email
+    # msg.attach(MIMEText(html_body, "html"))
+    # with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #     smtp.starttls()
+    #     smtp.login(settings.mail_username, settings.mail_pwd)
+    #     smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    send_email_with_resend(to_email, subject, html_body, raising=True)

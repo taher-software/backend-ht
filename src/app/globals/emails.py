@@ -4,6 +4,8 @@ from email.mime.text import MIMEText
 from src.settings import settings
 import logging
 from datetime import datetime
+from src.app.globals.resend_template import send_email_with_resend
+   
 
 logger = logging.getLogger(__name__)
 
@@ -239,36 +241,37 @@ def send_email(to_email, name, verification_link):
 </html>
 """
 
-    try:
-        # Create message container
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Verify Your Email - Bodor"
-        msg["From"] = f"Bodor <{settings.mail_username}>"
-        msg["To"] = to_email
+    # try:
+    #     # Create message container
+    #     msg = MIMEMultipart("alternative")
+    #     msg["Subject"] = "Verify Your Email - Bodor"
+    #     msg["From"] = f"Bodor <{settings.mail_username}>"
+    #     msg["To"] = to_email
 
-        # Attach HTML content
-        msg.attach(MIMEText(html_content, "html"))
+    #     # Attach HTML content
+    #     msg.attach(MIMEText(html_content, "html"))
 
-        # Send the email via SMTP server
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(settings.mail_username, settings.mail_pwd)
-            smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    #     # Send the email via SMTP server
+    #     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #         smtp.starttls()
+    #         smtp.login(settings.mail_username, settings.mail_pwd)
+    #         smtp.sendmail(settings.mail_username, to_email, msg.as_string())
 
-        logger.info(f"Verification email sent successfully to {to_email}")
-        return True
+    #     logger.info(f"Verification email sent successfully to {to_email}")
+    #     return True
 
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"SMTP authentication failed: {str(e)}")
-        return False
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP error occurred while sending email to {to_email}: {str(e)}")
-        return False
-    except Exception as e:
-        logger.error(
-            f"Failed to send verification email to {to_email}: {str(e)}", exc_info=True
-        )
-        return False
+    # except smtplib.SMTPAuthenticationError as e:
+    #     logger.error(f"SMTP authentication failed: {str(e)}")
+    #     return False
+    # except smtplib.SMTPException as e:
+    #     logger.error(f"SMTP error occurred while sending email to {to_email}: {str(e)}")
+    #     return False
+    # except Exception as e:
+    #     logger.error(
+    #         f"Failed to send verification email to {to_email}: {str(e)}", exc_info=True
+    #     )
+    #     return False
+    return send_email_with_resend(to_email, "Verify Your Email - Bodor", html_content)
 
 
 def send_account_confirmation_email(
@@ -589,36 +592,38 @@ def send_account_confirmation_email(
 </html>
 """
 
-    try:
-        # Create message container
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Welcome to Bodor - {hotel_name} Account Activated"
-        msg["From"] = f"Bodor <{settings.mail_username}>"
-        msg["To"] = to_email
+    # try:
+    #     # Create message container
+    #     msg = MIMEMultipart("alternative")
+    #     msg["Subject"] = f"Welcome to Bodor - {hotel_name} Account Activated"
+    #     msg["From"] = f"Bodor <{settings.mail_username}>"
+    #     msg["To"] = to_email
 
-        # Attach HTML content
-        msg.attach(MIMEText(html_content, "html"))
+    #     # Attach HTML content
+    #     msg.attach(MIMEText(html_content, "html"))
 
-        # Send the email via SMTP server
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(settings.mail_username, settings.mail_pwd)
-            smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    #     # Send the email via SMTP server
+    #     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #         smtp.starttls()
+    #         smtp.login(settings.mail_username, settings.mail_pwd)
+    #         smtp.sendmail(settings.mail_username, to_email, msg.as_string())
 
-        logger.info(f"Account confirmation email sent successfully to {to_email}")
-        return True
+    #     logger.info(f"Account confirmation email sent successfully to {to_email}")
+    #     return True
 
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"SMTP authentication failed: {str(e)}")
-        raise Exception(f"Failed to send confirmation email: SMTP authentication error")
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP error occurred while sending email to {to_email}: {str(e)}")
-        raise Exception(f"Failed to send confirmation email: {str(e)}")
-    except Exception as e:
-        logger.error(
-            f"Failed to send confirmation email to {to_email}: {str(e)}", exc_info=True
-        )
-        raise Exception(f"Failed to send confirmation email: {str(e)}")
+    # except smtplib.SMTPAuthenticationError as e:
+    #     logger.error(f"SMTP authentication failed: {str(e)}")
+    #     raise Exception(f"Failed to send confirmation email: SMTP authentication error")
+    # except smtplib.SMTPException as e:
+    #     logger.error(f"SMTP error occurred while sending email to {to_email}: {str(e)}")
+    #     raise Exception(f"Failed to send confirmation email: {str(e)}")
+    # except Exception as e:
+    #     logger.error(
+    #         f"Failed to send confirmation email to {to_email}: {str(e)}", exc_info=True
+    #     )
+    #     raise Exception(f"Failed to send confirmation email: {str(e)}")
+    
+    send_email_with_resend(to_email, f"Welcome to Bodor - {hotel_name} Account Activated", html_content, raising=True)
 
 
 def send_account_under_review_email(to_email: str, hotel_name: str):
@@ -764,28 +769,29 @@ def send_account_under_review_email(to_email: str, hotel_name: str):
 </html>
 """
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = settings.mail_username
-        msg["To"] = to_email
-        msg["Subject"] = "Your Bodor Account is Under Review"
+    # try:
+    #     msg = MIMEMultipart("alternative")
+    #     msg["From"] = settings.mail_username
+    #     msg["To"] = to_email
+    #     msg["Subject"] = "Your Bodor Account is Under Review"
 
-        html_part = MIMEText(html_content, "html")
-        msg.attach(html_part)
+    #     html_part = MIMEText(html_content, "html")
+    #     msg.attach(html_part)
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(settings.mail_username, settings.mail_pwd)
-            smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    #     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #         smtp.starttls()
+    #         smtp.login(settings.mail_username, settings.mail_pwd)
+    #         smtp.sendmail(settings.mail_username, to_email, msg.as_string())
 
-        logger.info(f"Account under review email sent to {to_email}")
+    #     logger.info(f"Account under review email sent to {to_email}")
 
-    except Exception as e:
-        logger.error(
-            f"Failed to send account under review email to {to_email}: {str(e)}",
-            exc_info=True,
-        )
-        raise Exception(f"Failed to send account under review email: {str(e)}")
+    # except Exception as e:
+    #     logger.error(
+    #         f"Failed to send account under review email to {to_email}: {str(e)}",
+    #         exc_info=True,
+    #     )
+    #     raise Exception(f"Failed to send account under review email: {str(e)}")
+    send_email_with_resend(to_email, "Your Bodor Account is Under Review", html_content, raising=True)
 
 
 def send_suspicious_account_alert_to_commercial(
@@ -986,30 +992,37 @@ def send_suspicious_account_alert_to_commercial(
 </html>
 """
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = settings.mail_username
-        msg["To"] = ", ".join(commercial_emails)
-        msg["Subject"] = f"🚨 URGENT: Suspicious Account Review Required - {hotel_name}"
+    # try:
+    #     msg = MIMEMultipart("alternative")
+    #     msg["From"] = settings.mail_username
+    #     msg["To"] = ", ".join(commercial_emails)
+    #     msg["Subject"] = f"🚨 URGENT: Suspicious Account Review Required - {hotel_name}"
 
-        html_part = MIMEText(html_content, "html")
-        msg.attach(html_part)
+    #     html_part = MIMEText(html_content, "html")
+    #     msg.attach(html_part)
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(settings.mail_username, settings.mail_pwd)
-            smtp.sendmail(settings.mail_username, commercial_emails, msg.as_string())
+    #     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #         smtp.starttls()
+    #         smtp.login(settings.mail_username, settings.mail_pwd)
+    #         smtp.sendmail(settings.mail_username, commercial_emails, msg.as_string())
 
-        logger.info(
-            f"Suspicious account alert sent to commercial team for {hotel_name} ({user_email})"
-        )
+    #     logger.info(
+    #         f"Suspicious account alert sent to commercial team for {hotel_name} ({user_email})"
+    #     )
 
-    except Exception as e:
-        logger.error(
-            f"Failed to send suspicious account alert to commercial team: {str(e)}",
-            exc_info=True,
-        )
-        raise Exception(f"Failed to send suspicious account alert: {str(e)}")
+    # except Exception as e:
+    #     logger.error(
+    #         f"Failed to send suspicious account alert to commercial team: {str(e)}",
+    #         exc_info=True,
+    #     )
+    #     raise Exception(f"Failed to send suspicious account alert: {str(e)}")
+    
+    send_email_with_resend(
+        ", ".join(commercial_emails),
+        f"🚨 URGENT: Suspicious Account Review Required - {hotel_name}",
+        html_content,
+        raising=True
+    )
 
 
 def send_account_rejection_email(to_email: str, hotel_name: str):
@@ -1150,25 +1163,27 @@ def send_account_rejection_email(to_email: str, hotel_name: str):
 </html>
 """
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = settings.mail_username
-        msg["To"] = to_email
-        msg["Subject"] = "Registration Update - Bodor Hotel Management"
+    # try:
+    #     msg = MIMEMultipart("alternative")
+    #     msg["From"] = settings.mail_username
+    #     msg["To"] = to_email
+    #     msg["Subject"] = "Registration Update - Bodor Hotel Management"
 
-        html_part = MIMEText(html_content, "html")
-        msg.attach(html_part)
+    #     html_part = MIMEText(html_content, "html")
+    #     msg.attach(html_part)
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(settings.mail_username, settings.mail_pwd)
-            smtp.sendmail(settings.mail_username, to_email, msg.as_string())
+    #     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+    #         smtp.starttls()
+    #         smtp.login(settings.mail_username, settings.mail_pwd)
+    #         smtp.sendmail(settings.mail_username, to_email, msg.as_string())
 
-        logger.info(f"Account rejection email sent to {to_email}")
+    #     logger.info(f"Account rejection email sent to {to_email}")
 
-    except Exception as e:
-        logger.error(
-            f"Failed to send account rejection email to {to_email}: {str(e)}",
-            exc_info=True,
-        )
-        raise Exception(f"Failed to send account rejection email: {str(e)}")
+    # except Exception as e:
+    #     logger.error(
+    #         f"Failed to send account rejection email to {to_email}: {str(e)}",
+    #         exc_info=True,
+    #     )
+    #     raise Exception(f"Failed to send account rejection email: {str(e)}")
+    
+    send_email_with_resend(to_email, "Registration Update - Bodor Hotel Management", html_content, raising=True)

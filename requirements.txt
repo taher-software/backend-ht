@@ -97,3 +97,4 @@ yarl==1.15.1
 google-cloud-pubsub==2.23.0
 google-cloud-tasks==2.16.5
 google-cloud-firestore==2.19.0
+resend==2.30.0
